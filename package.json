@@ -1,0 +1,17 @@
+{
+  "name": "orbit-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter web dev",
+    "dev:all": "concurrently \"pnpm --filter web dev\" \"cd apps/api && python -m uvicorn app.main:app --reload --port 8000\"",
+    "build": "pnpm --filter web build",
+    "test": "pnpm --filter web test",
+    "lint": "pnpm --filter web lint",
+    "docker:up": "docker compose -f infra/docker/docker-compose.yml up -d",
+    "docker:down": "docker compose -f infra/docker/docker-compose.yml down"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
