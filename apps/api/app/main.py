@@ -1,4 +1,7 @@
+import asyncio
+import logging
 from contextlib import asynccontextmanager
+from urllib.parse import urlparse
 from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -9,12 +12,45 @@ from app.core.redis import close_redis, get_redis
 from app.models.base import Base
 from app.api.v1.router import api_router
 
+logger = logging.getLogger("uvicorn.error")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Initialize DB tables on startup
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    # Safe logging of target database host
+    try:
+        parsed_db = urlparse(settings.DATABASE_URL)
+        host_info = f"{parsed_db.hostname}:{parsed_db.port or 5432}"
+        if parsed_db.hostname in ("localhost", "127.0.0.1"):
+            logger.warning(
+                f"[Orbit] DATABASE_URL is pointing to {host_info}. "
+                "Ensure DATABASE_URL environment variable is configured in production."
+            )
+        else:
+            logger.info(f"[Orbit] Connecting to database at {host_info}...")
+    except Exception:
+        pass
+
+    # Initialize DB tables on startup with retry loop to handle database startup race conditions
+    max_retries = 15
+    retry_delay = 2.0
+    for attempt in range(1, max_retries + 1):
+        try:
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+            logger.info("[Orbit] Database schema initialized successfully.")
+            break
+        except (ConnectionRefusedError, OSError, Exception) as e:
+            if attempt == max_retries:
+                logger.error(
+                    f"[Orbit] Failed to connect to database after {max_retries} attempts: {e}"
+                )
+                raise e
+            logger.warning(
+                f"[Orbit] Database not ready yet ({type(e).__name__}: {e}). Retrying in {retry_delay}s ({attempt}/{max_retries})..."
+            )
+            await asyncio.sleep(retry_delay)
+
     yield
     # Cleanup on shutdown
     await close_redis()
