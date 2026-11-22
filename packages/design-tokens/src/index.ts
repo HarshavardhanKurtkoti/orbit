@@ -1,27 +1,49 @@
 export const colors = {
   background: {
-    primary: '#08090D',
-    secondary: '#11131A',
-    elevated: '#191C26',
-    overlay: 'rgba(8, 9, 13, 0.75)',
+    base: '#070914',
+    surface: '#101426',
+    elevated: '#171B32',
+    overlay: 'rgba(7, 9, 20, 0.78)',
   },
   accent: {
-    primary: '#8B5CF6',     // Violet 500
-    primaryHover: '#7C3AED',// Violet 600
-    secondary: '#38BDF8',   // Sky 400
-    secondaryHover: '#0EA5E9',
-    glow: 'rgba(139, 92, 246, 0.25)',
+    violet: '#9366FF',
+    violetHover: '#7C3AED',
+    blue: '#38BDF8',
+    cyan: '#22D3EE',
+    glowViolet: 'rgba(147, 102, 255, 0.25)',
+    glowCyan: 'rgba(34, 211, 238, 0.22)',
   },
   text: {
-    primary: '#F8FAFC',     // Slate 50
-    secondary: '#94A3B8',   // Slate 400
-    muted: '#64748B',       // Slate 500
-    inverse: '#08090D',
+    primary: '#F8FAFC',
+    secondary: '#A1ABC4',
+    muted: '#626D8A',
+    inverse: '#070914',
   },
   border: {
-    subtle: 'rgba(255, 255, 255, 0.08)',
-    medium: 'rgba(255, 255, 255, 0.14)',
-    active: 'rgba(139, 92, 246, 0.5)',
+    subtle: 'rgba(255, 255, 255, 0.07)',
+    medium: 'rgba(255, 255, 255, 0.12)',
+    highlight: 'rgba(255, 255, 255, 0.22)',
+    active: 'rgba(147, 102, 255, 0.55)',
+  },
+  glass: {
+    subtle: {
+      bg: 'rgba(16, 20, 38, 0.55)',
+      border: 'rgba(255, 255, 255, 0.08)',
+      blur: '12px',
+      highlight: 'rgba(255, 255, 255, 0.06)',
+    },
+    standard: {
+      bg: 'rgba(16, 20, 38, 0.72)',
+      border: 'rgba(255, 255, 255, 0.12)',
+      blur: '20px',
+      highlight: 'rgba(255, 255, 255, 0.10)',
+    },
+    elevated: {
+      bg: 'rgba(23, 27, 50, 0.85)',
+      border: 'rgba(255, 255, 255, 0.18)',
+      blur: '28px',
+      highlight: 'rgba(255, 255, 255, 0.16)',
+    },
   },
   status: {
     success: '#34D399',
@@ -90,5 +112,7 @@ export const radius = {
   md: '0.5rem',   // 8px
   lg: '0.75rem',  // 12px
   xl: '1rem',     // 16px
+  '2xl': '1.25rem', // 20px
+  '3xl': '1.5rem', // 24px
   full: '9999px',
 } as const;

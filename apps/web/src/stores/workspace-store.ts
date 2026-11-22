@@ -42,7 +42,11 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
 
   setCurrentWorkspace: (workspace) => set({ currentWorkspace: workspace }),
   setWorkspaces: (workspaces) => set({ workspaces }),
-  setActiveTab: (tab) => set({ activeTab: tab }),
+  setActiveTab: (tab) => {
+    // Gracefully normalize legacy or alias tabs
+    const normalizedTab = tab === "projects" ? "tasks" : tab;
+    set({ activeTab: normalizedTab });
+  },
   setSelectedEntity: (entity) => set({ selectedEntity: entity, isInspectorOpen: entity !== null }),
   setInspectorOpen: (open) => set({ isInspectorOpen: open }),
   setCommandPaletteOpen: (open) => set({ isCommandPaletteOpen: open }),
