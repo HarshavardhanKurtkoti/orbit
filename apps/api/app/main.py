@@ -19,15 +19,9 @@ logger = logging.getLogger("uvicorn.error")
 async def lifespan(app: FastAPI):
     # Safe logging of target database host
     try:
-        parsed_db = urlparse(settings.DATABASE_URL)
+        parsed_db = urlparse(settings.async_database_url)
         host_info = f"{parsed_db.hostname}:{parsed_db.port or 5432}"
-        if parsed_db.hostname in ("localhost", "127.0.0.1"):
-            logger.warning(
-                f"[Orbit] DATABASE_URL is pointing to {host_info}. "
-                "Ensure DATABASE_URL environment variable is configured in production."
-            )
-        else:
-            logger.info(f"[Orbit] Connecting to database at {host_info}...")
+        logger.info(f"[Orbit] Connecting to database at {host_info}...")
     except Exception:
         pass
 

@@ -4,15 +4,15 @@ services:
     container_name: orbit-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: orbit_user
-      POSTGRES_PASSWORD: orbit_password
-      POSTGRES_DB: orbit_db
+      POSTGRES_USER: ${PG_USER:-orbit_user}
+      POSTGRES_PASSWORD: ${PG_PASSWORD:-orbit_password}
+      POSTGRES_DB: ${PG_DB:-orbit_db}
     ports:
       - "5432:5432"
     volumes:
       - orbit_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U orbit_user -d orbit_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${PG_USER:-orbit_user} -d ${PG_DB:-orbit_db}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -40,7 +40,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql+asyncpg://orbit_user:orbit_password@postgres:5432/orbit_db
+      - DATABASE_URL=postgresql+asyncpg://${PG_USER:-orbit_user}:${PG_PASSWORD:-orbit_password}@postgres:5432/${PG_DB:-orbit_db}
       - REDIS_URL=redis://redis:6379/0
       - AI_DEMO_MODE=false
     env_file:

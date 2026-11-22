@@ -8,7 +8,12 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     
     # Database
-    DATABASE_URL: str = "postgresql+asyncpg://orbit_user:orbit_password@localhost:5432/orbit_db"
+    DATABASE_URL: str | None = None
+    PG_USER: str | None = None
+    PG_PASSWORD: str | None = None
+    PG_HOST: str = "localhost"
+    PG_PORT: int = 5432
+    PG_DB: str = "orbit_db"
     
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
@@ -40,7 +45,13 @@ class Settings(BaseSettings):
 
     @property
     def async_database_url(self) -> str:
-        url = self.DATABASE_URL
+        if self.DATABASE_URL:
+            url = self.DATABASE_URL
+        elif self.PG_USER and self.PG_PASSWORD:
+            url = f"postgresql+asyncpg://{self.PG_USER}:{self.PG_PASSWORD}@{self.PG_HOST}:{self.PG_PORT}/{self.PG_DB}"
+        else:
+            url = "postgresql+asyncpg://orbit_user:orbit_password@localhost:5432/orbit_db"
+
         if url.startswith("postgres://"):
             url = url.replace("postgres://", "postgresql+asyncpg://", 1)
         elif url.startswith("postgresql://") and not url.startswith("postgresql+asyncpg://"):
