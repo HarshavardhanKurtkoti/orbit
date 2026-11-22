@@ -1,22 +1,99 @@
 import json
+import logging
+import httpx
 from app.core.config import settings
 from app.schemas.ai import AiGeneratedPlan, ProjectBlueprint, TaskBlueprint, MilestoneBlueprint
+
+logger = logging.getLogger(__name__)
+
+
+def _extract_and_parse_json(raw_text: str) -> dict:
+    text = raw_text.strip()
+
+    # Strip markdown code blocks if the LLM outputted ```json ... ```
+    if "```" in text:
+        lines = text.splitlines()
+        cleaned_lines = []
+        inside = False
+        for line in lines:
+            if line.strip().startswith("```"):
+                inside = not inside
+                continue
+            cleaned_lines.append(line)
+        text = "\n".join(cleaned_lines).strip()
+
+    # Extract outermost JSON object bracket if there's surrounding chatter
+    start = text.find("{")
+    end = text.rfind("}")
+    if start != -1 and end != -1:
+        text = text[start : end + 1]
+
+    return json.loads(text)
 
 
 class AiWorkspaceService:
     @staticmethod
     async def generate_plan(prompt: str) -> dict:
-        # Check if OpenAI or alternative LLM is configured
+        system_prompt = (
+            "You are ORBIT's AI Systems Architect. Given a user goal, output ONLY a valid JSON object "
+            "(no markdown, no backticks, no code fences, no conversational prose) with schema:\n"
+            "{\n"
+            '  "title": str,\n'
+            '  "description": str,\n'
+            '  "projects": [\n'
+            "    {\n"
+            '      "title": str,\n'
+            '      "description": str,\n'
+            '      "priority": "low" | "medium" | "high" | "urgent",\n'
+            '      "tasks": [{"title": str, "priority": "low" | "medium" | "high" | "urgent", "estimated_hours": int}]\n'
+            "    }\n"
+            "  ],\n"
+            '  "milestones": [{"title": str, "target_week": int}]\n'
+            "}"
+        )
+
+        # 1. OpenRouter Provider
+        if (settings.LLM_PROVIDER == "openrouter" or settings.OPENROUTER_API_KEY) and settings.OPENROUTER_API_KEY:
+            try:
+                headers = {
+                    "Authorization": f"Bearer {settings.OPENROUTER_API_KEY}",
+                    "HTTP-Referer": "http://localhost:3000",
+                    "X-Title": "ORBIT Spatial OS",
+                    "Content-Type": "application/json",
+                }
+                async with httpx.AsyncClient(timeout=45.0) as client:
+                    response = await client.post(
+                        "https://openrouter.ai/api/v1/chat/completions",
+                        headers=headers,
+                        json={
+                            "model": settings.effective_openrouter_model,
+                            "messages": [
+                                {"role": "system", "content": system_prompt},
+                                {"role": "user", "content": prompt},
+                            ],
+                            "temperature": 0.4,
+                        },
+                    )
+
+                    if response.status_code == 200:
+                        data = response.json()
+                        raw_content = data["choices"][0]["message"]["content"]
+                        parsed = _extract_and_parse_json(raw_content)
+                        validated = AiGeneratedPlan.model_validate(parsed)
+                        return validated.model_dump()
+                    else:
+                        logger.warning(
+                            "OpenRouter error %s: %s",
+                            response.status_code,
+                            response.text[:300],
+                        )
+            except Exception as e:
+                logger.error("OpenRouter request failed: %s", e)
+
+        # 2. OpenAI Provider
         if settings.OPENAI_API_KEY:
             try:
-                import httpx
-                async with httpx.AsyncClient(timeout=30.0) as client:
-                    system_prompt = (
-                        "You are ORBIT's AI Systems Architect. Given a user goal, output ONLY a valid JSON object "
-                        "with schema: {'title': str, 'description': str, 'projects': [{'title': str, 'description': str, "
-                        "'priority': 'low'|'medium'|'high'|'urgent', 'tasks': [{'title': str, 'priority': str, 'estimated_hours': int}]}], "
-                        "'milestones': [{'title': str, 'target_week': int}]}"
-                    )
+                async with httpx.AsyncClient(timeout=35.0) as client:
                     response = await client.post(
                         "https://api.openai.com/v1/chat/completions",
                         headers={"Authorization": f"Bearer {settings.OPENAI_API_KEY}"},
@@ -32,17 +109,14 @@ class AiWorkspaceService:
                     )
                     if response.status_code == 200:
                         data = response.json()
-                        content = data["choices"][0]["message"]["content"]
-                        parsed = json.loads(content)
-                        # Validate with Pydantic
+                        raw_content = data["choices"][0]["message"]["content"]
+                        parsed = _extract_and_parse_json(raw_content)
                         validated = AiGeneratedPlan.model_validate(parsed)
                         return validated.model_dump()
             except Exception as e:
-                # Log error and fall through to clearly labeled deterministic mode
-                pass
+                logger.error("OpenAI request failed: %s", e)
 
-        # Clearly labeled deterministic generation engine
-        # Analyzes prompt keywords to generate relevant roadmap
+        # 3. Deterministic Fallback Mode
         lower_prompt = prompt.lower()
         if "backend" in lower_prompt or "engineer" in lower_prompt or "system" in lower_prompt:
             plan = AiGeneratedPlan(
