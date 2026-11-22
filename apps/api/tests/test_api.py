@@ -12,11 +12,17 @@ async def test_health_endpoints():
 
         ready_res = await ac.get("/health/ready")
         assert ready_res.status_code == 200
-        assert ready_res.json()["status"] == "ready"
+        assert ready_res.json()["status"] in ["ready", "healthy"]
+
+        health_res = await ac.get("/health")
+        assert health_res.status_code == 200
+        assert "checks" in health_res.json()
 
 
 @pytest.mark.asyncio
 async def test_demo_login_and_workspaces():
+    from app.core.database import engine
+    await engine.dispose()
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         # Demo login
         login_res = await ac.post("/api/v1/auth/demo")

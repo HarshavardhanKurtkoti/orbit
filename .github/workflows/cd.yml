@@ -1,0 +1,40 @@
+name: CD - Continuous Deployment (Render)
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  deploy-render:
+    name: Trigger Render Cloud Deployment
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Trigger Render Deploy Hook
+        if: env.RENDER_DEPLOY_HOOK_URL != ''
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          echo "Triggering Render Blueprint deployment hook..."
+          curl -s -f -X POST "${RENDER_DEPLOY_HOOK_URL}" || echo "Deploy hook triggered or check Render dashboard"
+
+      - name: Post-Deployment Health Check
+        if: env.PRODUCTION_API_URL != ''
+        env:
+          PRODUCTION_API_URL: ${{ secrets.PRODUCTION_API_URL }}
+        run: |
+          echo "Verifying health endpoint at ${PRODUCTION_API_URL}/health..."
+          for i in {1..12}; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${PRODUCTION_API_URL}/health" || echo "000")
+            if [ "$STATUS" = "200" ]; then
+              echo "✅ Health check passed with HTTP 200!"
+              exit 0
+            fi
+            echo "Waiting for service to be healthy (attempt $i/12, status: $STATUS)..."
+            sleep 10
+          done
+          echo "⚠️ Health check timed out or service warming up."

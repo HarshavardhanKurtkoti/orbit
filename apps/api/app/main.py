@@ -2,9 +2,10 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
 
+from sqlalchemy import text
 from app.core.config import settings
 from app.core.database import engine
-from app.core.redis import close_redis
+from app.core.redis import close_redis, get_redis
 from app.models.base import Base
 from app.api.v1.router import api_router
 
@@ -39,14 +40,52 @@ app.add_middleware(
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
 
+@app.get("/health", status_code=status.HTTP_200_OK)
+@app.get("/healthz", status_code=status.HTTP_200_OK)
+async def health_check():
+    """Primary health check endpoint for Render, Kubernetes, and uptime monitoring."""
+    checks = {
+        "database": "unknown",
+        "redis": "unknown",
+        "llm_provider": settings.LLM_PROVIDER,
+        "llm_configured": bool(settings.OPENROUTER_API_KEY or settings.OPENAI_API_KEY),
+    }
+
+    # Verify PostgreSQL connectivity
+    try:
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+        checks["database"] = "connected"
+    except Exception as e:
+        checks["database"] = f"unhealthy: {str(e)[:80]}"
+
+    # Verify Redis connectivity
+    try:
+        r = await get_redis()
+        pong = await r.ping()
+        checks["redis"] = "connected" if pong else "disconnected"
+    except Exception as e:
+        checks["redis"] = f"unhealthy: {str(e)[:80]}"
+
+    is_healthy = checks["database"] == "connected"
+    return {
+        "status": "healthy" if is_healthy else "degraded",
+        "service": settings.PROJECT_NAME,
+        "version": settings.VERSION,
+        "checks": checks,
+    }
+
+
 @app.get("/health/live", status_code=status.HTTP_200_OK)
 async def health_live():
+    """Liveness probe: verifies the API process is alive."""
     return {"status": "live", "version": settings.VERSION}
 
 
 @app.get("/health/ready", status_code=status.HTTP_200_OK)
 async def health_ready():
-    return {"status": "ready", "database": "connected"}
+    """Readiness probe: verifies the service is ready to accept traffic."""
+    return await health_check()
 
 
 @app.get("/")

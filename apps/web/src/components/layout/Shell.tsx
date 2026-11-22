@@ -89,6 +89,20 @@ export function Shell() {
     init();
   }, [setCurrentWorkspace, setWorkspaces]);
 
+  // URL search params sync for deep-linking & preview captures
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get("tab") as NavTab | null;
+      if (tabParam && ["home", "universe", "tasks", "notes", "timeline", "analytics"].includes(tabParam)) {
+        setActiveTab(tabParam);
+      }
+      if (params.get("cmd") === "true" || params.get("commandPalette") === "true") {
+        setCommandPaletteOpen(true);
+      }
+    }
+  }, [setActiveTab, setCommandPaletteOpen]);
+
   // Global Ctrl+K / Cmd+K listener (Principle 20: Frequency of Use)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

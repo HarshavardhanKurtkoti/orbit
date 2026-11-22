@@ -1,0 +1,63 @@
+services:
+  # 1. FastAPI Backend Service (Docker)
+  - type: web
+    name: orbit-api
+    runtime: docker
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: ./apps/api
+    plan: free
+    region: oregon
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: orbit-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: orbit-redis
+          property: connectionString
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENROUTER_MODEL
+        value: nvidia/nemotron-3-ultra-550b-a55b:free
+      - key: LLM_PROVIDER
+        value: openrouter
+      - key: AI_DEMO_MODE
+        value: "false"
+
+  # 2. Next.js 15 Web Frontend Service
+  - type: web
+    name: orbit-web
+    runtime: node
+    plan: free
+    region: oregon
+    healthCheckPath: /
+    autoDeploy: true
+    buildCommand: pnpm install && pnpm --filter @orbit/web build
+    startCommand: pnpm --filter @orbit/web start
+    envVars:
+      - key: NODE_VERSION
+        value: 20.x
+      - key: INTERNAL_API_URL
+        fromService:
+          type: web
+          name: orbit-api
+          property: host
+
+  # 3. Redis Service
+  - type: redis
+    name: orbit-redis
+    plan: free
+    region: oregon
+    ipAllowList: [] # Internal private cluster access only
+
+# 4. Managed PostgreSQL Database
+databases:
+  - name: orbit-postgres
+    databaseName: orbit_db
+    user: orbit_user
+    plan: free
+    region: oregon

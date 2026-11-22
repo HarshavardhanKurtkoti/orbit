@@ -38,6 +38,15 @@ class Settings(BaseSettings):
             return "nvidia/nemotron-3-ultra-550b-a55b:free"
         return self.OPENROUTER_MODEL
 
+    @property
+    def async_database_url(self) -> str:
+        url = self.DATABASE_URL
+        if url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+        elif url.startswith("postgresql://") and not url.startswith("postgresql+asyncpg://"):
+            url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return url
+
     model_config = SettingsConfigDict(
         case_sensitive=True,
         env_file=(".env", "../../.env", "../.env"),
