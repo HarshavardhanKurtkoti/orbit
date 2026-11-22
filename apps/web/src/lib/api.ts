@@ -414,8 +414,10 @@ class ApiClient {
       headers["Authorization"] = `Bearer ${this.token}`;
     }
 
+    const isAi = endpoint.startsWith("/ai");
+    const timeoutMs = isAi ? 60000 : 15000;
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2500);
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
       const response = await fetch(`${API_BASE}${endpoint}`, {

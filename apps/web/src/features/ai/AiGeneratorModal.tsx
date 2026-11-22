@@ -22,8 +22,14 @@ export function AiGeneratorModal() {
     if (!prompt.trim()) return;
     try {
       setIsGenerating(true);
-      const wsId = currentWorkspace?.id || "ws_prime";
-      const job = await api.generateWorkspacePlan(wsId, prompt.trim());
+      let wsId = currentWorkspace?.id;
+      if (!wsId || wsId === "ws_prime") {
+        const workspaces = await api.listWorkspaces();
+        if (workspaces && workspaces.length > 0) {
+          wsId = workspaces[0].id;
+        }
+      }
+      const job = await api.generateWorkspacePlan(wsId || "ws_prime", prompt.trim());
       setGeneratedJob(job);
     } catch (err) {
       console.error("AI generation failed:", err);

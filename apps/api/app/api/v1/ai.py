@@ -6,6 +6,7 @@ from sqlalchemy import select
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.user import User
+from app.models.workspace import Workspace
 from app.models.ai import AiGenerationJob
 from app.models.project import Project
 from app.models.task import Task
@@ -28,8 +29,30 @@ async def generate_workspace_job(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    target_workspace_id = request.workspace_id
+    # Validate or resolve workspace for user
+    ws_result = await db.execute(
+        select(Workspace).where(Workspace.id == target_workspace_id)
+    )
+    ws = ws_result.scalar_one_or_none()
+    if not ws:
+        user_ws_result = await db.execute(
+            select(Workspace).where(Workspace.owner_id == current_user.id).limit(1)
+        )
+        ws = user_ws_result.scalar_one_or_none()
+        if not ws:
+            ws = Workspace(
+                owner_id=current_user.id,
+                name="Cosmos Prime",
+                description="Primary deep space command workspace",
+                settings={"theme": "space-dark", "layout": "spatial"},
+            )
+            db.add(ws)
+            await db.flush()
+        target_workspace_id = ws.id
+
     job = AiGenerationJob(
-        workspace_id=request.workspace_id,
+        workspace_id=target_workspace_id,
         user_id=current_user.id,
         prompt=request.prompt,
         status="processing",
