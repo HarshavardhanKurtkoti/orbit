@@ -17,17 +17,24 @@ import { MetricCard } from "@/components/ui/MetricCard";
 import { ProgressRing } from "@/components/ui/ProgressRing";
 
 export function AnalyticsView() {
-  const { currentWorkspace } = useWorkspaceStore();
-  const [analytics, setAnalytics] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const { currentWorkspace, analytics: storeAnalytics, setAnalytics: setStoreAnalytics } = useWorkspaceStore();
+  const [analytics, setAnalytics] = useState<any>(storeAnalytics);
+  const [loading, setLoading] = useState(storeAnalytics === null);
+
+  useEffect(() => {
+    if (storeAnalytics) {
+      setAnalytics(storeAnalytics);
+      setLoading(false);
+    }
+  }, [storeAnalytics]);
 
   useEffect(() => {
     if (!currentWorkspace?.id) return;
     async function load() {
       try {
-        setLoading(true);
         const data = await api.getAnalytics(currentWorkspace.id);
         setAnalytics(data);
+        setStoreAnalytics(data);
       } catch (err) {
         console.error("Analytics error:", err);
       } finally {
@@ -35,7 +42,7 @@ export function AnalyticsView() {
       }
     }
     load();
-  }, [currentWorkspace?.id]);
+  }, [currentWorkspace?.id, setStoreAnalytics]);
 
   const completionRate = analytics?.completion_rate ?? 67;
 

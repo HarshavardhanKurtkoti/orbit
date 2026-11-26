@@ -404,6 +404,31 @@ class ApiClient {
     return this.token;
   }
 
+  // Synchronous cache accessors for instant, zero-latency rendering
+  getCachedState() {
+    return this.localState;
+  }
+
+  getCachedGraph() {
+    return this.localState.graph || { nodes: [], edges: [] };
+  }
+
+  getCachedProjects() {
+    return this.localState.projects || [];
+  }
+
+  getCachedTasks() {
+    return this.localState.tasks || [];
+  }
+
+  getCachedNotes() {
+    return this.localState.notes || [];
+  }
+
+  getCachedWorkspaces() {
+    return this.localState.workspaces || [];
+  }
+
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
@@ -680,7 +705,12 @@ class ApiClient {
   // Graph
   async getGraph(workspaceId: string) {
     try {
-      return await this.request<{ nodes: any[]; edges: any[] }>(`/workspaces/${workspaceId}/graph`);
+      const data = await this.request<{ nodes: any[]; edges: any[] }>(`/workspaces/${workspaceId}/graph`);
+      if (data && Array.isArray(data.nodes) && data.nodes.length > 0) {
+        this.localState.graph = data;
+        this.saveLocal();
+      }
+      return data;
     } catch {
       return this.localState.graph;
     }

@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import React, { useEffect, useState, useMemo } from "react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Compass,
   Home,
@@ -28,22 +29,36 @@ import { AiGeneratorModal } from "@/features/ai/AiGeneratorModal";
 import { AmbientBackground } from "@/components/ui/AmbientBackground";
 import { GlassButton } from "@/components/ui/GlassButton";
 
-const NAV_ITEMS: Array<{ id: NavTab; label: string; icon: React.ElementType; badge?: string }> = [
-  { id: "home", label: "Overview", icon: Home },
-  { id: "universe", label: "Universe", icon: Compass, badge: "Flagship" },
-  { id: "tasks", label: "Tasks", icon: CheckSquare },
-  { id: "notes", label: "Notes", icon: BookOpen },
-  { id: "timeline", label: "Timeline", icon: CalendarDays },
-  { id: "analytics", label: "Analytics", icon: BarChart3 },
+interface NavItemConfig {
+  id: NavTab;
+  label: string;
+  href: string;
+  icon: React.ElementType;
+  badge?: string;
+}
+
+const NAV_ITEMS: NavItemConfig[] = [
+  { id: "home", label: "Overview", href: "/", icon: Home },
+  { id: "universe", label: "Universe", href: "/universe", icon: Compass, badge: "Flagship" },
+  { id: "tasks", label: "Tasks", href: "/tasks", icon: CheckSquare },
+  { id: "notes", label: "Notes", href: "/notes", icon: BookOpen },
+  { id: "timeline", label: "Timeline", href: "/timeline", icon: CalendarDays },
+  { id: "analytics", label: "Analytics", href: "/analytics", icon: BarChart3 },
 ];
 
-export function Shell() {
+interface ShellProps {
+  children?: React.ReactNode;
+  activeTab?: NavTab;
+}
+
+export function Shell({ children, activeTab: propTab }: ShellProps) {
+  const pathname = usePathname();
+  const router = useRouter();
+
   const {
-    activeTab,
+    activeTab: storeTab,
     setActiveTab,
-    currentWorkspace,
     setCurrentWorkspace,
-    workspaces,
     setWorkspaces,
     isCommandPaletteOpen,
     setCommandPaletteOpen,
@@ -51,44 +66,47 @@ export function Shell() {
     setAiModalOpen,
     universeViewMode,
     setUniverseViewMode,
+    loadWorkspaceData,
   } = useWorkspaceStore();
 
-  const [isLoading, setIsLoading] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
-  // Auto authenticate with demo account on load
+  // Derive active tab from current URL pathname or explicit prop
+  const activeTab: NavTab = useMemo(() => {
+    if (propTab) return propTab;
+    if (!pathname || pathname === "/" || pathname === "/overview") return "home";
+    if (pathname.startsWith("/universe")) return "universe";
+    if (pathname.startsWith("/tasks")) return "tasks";
+    if (pathname.startsWith("/notes")) return "notes";
+    if (pathname.startsWith("/timeline")) return "timeline";
+    if (pathname.startsWith("/analytics")) return "analytics";
+    return storeTab || "home";
+  }, [pathname, propTab, storeTab]);
+
+  // Synchronize store tab with pathname
+  useEffect(() => {
+    if (activeTab && activeTab !== storeTab) {
+      setActiveTab(activeTab);
+    }
+  }, [activeTab, storeTab, setActiveTab]);
+
+  // Background authenticate with demo account and seed workspace data
   useEffect(() => {
     async function init() {
       try {
         await api.demoLogin();
         const wsList = await api.listWorkspaces();
-        setWorkspaces(wsList);
-        if (wsList.length > 0) {
+        if (wsList && wsList.length > 0) {
+          setWorkspaces(wsList);
           setCurrentWorkspace(wsList[0]);
+          loadWorkspaceData(wsList[0].id);
         }
       } catch (err) {
-        console.error("Initialization error:", err);
-      } finally {
-        setIsLoading(false);
+        console.warn("Workspace init fallback active:", err);
       }
     }
     init();
-  }, [setCurrentWorkspace, setWorkspaces]);
-
-  // URL search params sync for deep-linking & preview captures
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      const tabParam = params.get("tab") as NavTab | null;
-      if (tabParam && ["home", "universe", "tasks", "notes", "timeline", "analytics"].includes(tabParam)) {
-        setActiveTab(tabParam);
-      }
-      if (params.get("cmd") === "true" || params.get("commandPalette") === "true") {
-        setCommandPaletteOpen(true);
-      }
-    }
-  }, [setActiveTab, setCommandPaletteOpen]);
+  }, [setCurrentWorkspace, setWorkspaces, loadWorkspaceData]);
 
   // Global Ctrl+K / Cmd+K listener
   useEffect(() => {
@@ -119,12 +137,12 @@ export function Shell() {
             <div>
               {/* ORBIT BRANDING */}
               <div className="flex items-center justify-between px-2 py-2 mb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="h-7 w-7 rounded-lg bg-[#15221e] border border-[#202e2b] flex items-center justify-center text-[#a7f3d0]">
+                <Link href="/" className="flex items-center gap-2.5 group">
+                  <div className="h-7 w-7 rounded-lg bg-[#15221e] border border-[#202e2b] flex items-center justify-center text-[#a7f3d0] group-hover:border-[#a7f3d0]/40 transition-colors">
                     <Compass className="h-4 w-4" />
                   </div>
                   <div>
-                    <div className="font-semibold text-sm tracking-tight text-[#f1f5f4] flex items-center gap-1.5 font-sans">
+                    <div className="font-semibold text-sm tracking-tight text-[#f1f5f4] flex items-center gap-1.5 font-sans group-hover:text-[#a7f3d0] transition-colors">
                       Orbit<span className="text-[#a7f3d0]">.</span>
                     </div>
                     <div className="text-[10px] text-[#9aaba8] font-mono tracking-tight flex items-center gap-1.5">
@@ -132,7 +150,7 @@ export function Shell() {
                       <span>Workspace</span>
                     </div>
                   </div>
-                </div>
+                </Link>
 
                 {/* Mobile close button */}
                 <button
@@ -160,7 +178,7 @@ export function Shell() {
                 </button>
               </div>
 
-              {/* NAVIGATION ITEMS */}
+              {/* NAVIGATION ITEMS WITH REAL ROUTING LINKS */}
               <nav className="space-y-1">
                 <div className="px-2 pt-1 pb-1">
                   <span className="text-[9px] font-mono uppercase tracking-widest text-[#6e807d]">
@@ -171,12 +189,10 @@ export function Shell() {
                   const Icon = item.icon;
                   const isActive = activeTab === item.id;
                   return (
-                    <button
+                    <Link
                       key={item.id}
-                      onClick={() => {
-                        setActiveTab(item.id);
-                        setIsMobileMenuOpen(false);
-                      }}
+                      href={item.href}
+                      onClick={() => setIsMobileMenuOpen(false)}
                       className={`
                         w-full px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center justify-between
                         transition-all duration-150 select-none
@@ -202,7 +218,7 @@ export function Shell() {
                           {item.badge}
                         </span>
                       )}
-                    </button>
+                    </Link>
                   );
                 })}
               </nav>
@@ -244,7 +260,9 @@ export function Shell() {
                   Orbit
                 </span>
                 <span className="text-[#6e807d]">/</span>
-                <span className="font-medium text-[#f1f5f4] capitalize">{activeTab}</span>
+                <span className="font-medium text-[#f1f5f4] capitalize">
+                  {activeTab === "home" ? "Overview" : activeTab}
+                </span>
               </div>
             </div>
 
@@ -296,14 +314,20 @@ export function Shell() {
             </div>
           </header>
 
-          {/* VIEW SWITCHER CONTENT */}
+          {/* VIEW SWITCHER / PAGE CONTENT */}
           <div className="flex-1 min-w-0 h-[calc(100vh-3rem)] overflow-hidden relative">
-            {activeTab === "home" && <HomeDashboard />}
-            {activeTab === "universe" && <UniverseCanvas viewMode={universeViewMode} />}
-            {activeTab === "tasks" && <TasksView />}
-            {activeTab === "notes" && <NotesView />}
-            {activeTab === "timeline" && <TimelineView />}
-            {activeTab === "analytics" && <AnalyticsView />}
+            {children ? (
+              children
+            ) : (
+              <>
+                {activeTab === "home" && <HomeDashboard />}
+                {activeTab === "universe" && <UniverseCanvas viewMode={universeViewMode} />}
+                {activeTab === "tasks" && <TasksView />}
+                {activeTab === "notes" && <NotesView />}
+                {activeTab === "timeline" && <TimelineView />}
+                {activeTab === "analytics" && <AnalyticsView />}
+              </>
+            )}
           </div>
         </main>
 

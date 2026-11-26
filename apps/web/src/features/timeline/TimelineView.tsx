@@ -10,17 +10,24 @@ import { ProgressRing } from "@/components/ui/ProgressRing";
 import { EmptyState } from "@/components/ui/EmptyState";
 
 export function TimelineView() {
-  const { currentWorkspace, setSelectedEntity } = useWorkspaceStore();
-  const [projects, setProjects] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { currentWorkspace, setSelectedEntity, projects: storeProjects, setProjects: setStoreProjects } = useWorkspaceStore();
+  const [projects, setProjects] = useState<any[]>(storeProjects);
+  const [loading, setLoading] = useState(storeProjects.length === 0);
+
+  useEffect(() => {
+    if (storeProjects && storeProjects.length > 0) {
+      setProjects(storeProjects);
+      setLoading(false);
+    }
+  }, [storeProjects]);
 
   useEffect(() => {
     if (!currentWorkspace?.id) return;
     async function load() {
       try {
-        setLoading(true);
         const data = await api.listProjects(currentWorkspace.id);
         setProjects(data);
+        setStoreProjects(data);
       } catch (err) {
         console.error("Timeline error:", err);
       } finally {
@@ -28,7 +35,7 @@ export function TimelineView() {
       }
     }
     load();
-  }, [currentWorkspace?.id]);
+  }, [currentWorkspace?.id, setStoreProjects]);
 
   return (
     <div className="h-full w-full overflow-y-auto px-4 py-6 md:p-8 space-y-6 max-w-6xl mx-auto">

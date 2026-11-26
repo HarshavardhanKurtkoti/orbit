@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useState, useMemo } from "react";
+import React, { useCallback, useEffect, useState, useMemo, useRef } from "react";
 import {
   ReactFlow,
   Controls,
@@ -32,7 +32,7 @@ import {
   RefreshCw,
   Compass,
   AlertCircle,
-  Filter,
+  Check,
 } from "lucide-react";
 import { GlassPanel } from "@/components/ui/GlassPanel";
 import { GlassButton } from "@/components/ui/GlassButton";
@@ -42,14 +42,64 @@ interface UniverseCanvasProps {
   viewMode?: "spatial" | "tree";
 }
 
+function mapGraphToFlow(graphNodes: any[], graphEdges: any[], wsId: string) {
+  const mappedNodes: Node[] = (graphNodes || []).map((n: any) => ({
+    id: n.id,
+    type: n.entity_type,
+    position: { x: n.position_x, y: n.position_y },
+    data: {
+      ...n.metadata,
+      title: n.metadata?.title || n.title || "Untitled Entity",
+      progress: n.metadata?.progress ?? n.progress ?? 50,
+      priority: n.metadata?.priority || n.priority || "medium",
+      status: n.metadata?.status || n.status || "todo",
+      entityId: n.entity_id || n.id,
+      workspaceId: n.workspace_id || wsId,
+    },
+  }));
+
+  const mappedEdges: Edge[] = (graphEdges || []).map((e: any) => ({
+    id: e.id,
+    source: e.source_node_id,
+    target: e.target_node_id,
+    animated: e.relationship_type === "depends_on",
+    style: {
+      stroke: e.relationship_type === "depends_on" ? "#a7f3d0" : "#2a3d38",
+      strokeWidth: 1.5,
+      opacity: 0.85,
+    },
+  }));
+
+  return { mappedNodes, mappedEdges };
+}
+
 export function UniverseCanvas({ viewMode = "spatial" }: UniverseCanvasProps) {
-  const { currentWorkspace, setSelectedEntity, setAiModalOpen } = useWorkspaceStore();
-  const [nodes, setNodes] = useState<Node[]>([]);
-  const [edges, setEdges] = useState<Edge[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    currentWorkspace,
+    setSelectedEntity,
+    setAiModalOpen,
+    graphNodes,
+    graphEdges,
+    isGraphLoaded,
+    isSyncing,
+    revalidateGraph,
+    updateGraphPositions,
+  } = useWorkspaceStore();
+
+  const wsId = currentWorkspace?.id || "ws_prime";
+
+  // Initialize with cached store data immediately for instant zero-latency rendering
+  const initial = useMemo(
+    () => mapGraphToFlow(graphNodes, graphEdges, wsId),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
+  const [nodes, setNodes] = useState<Node[]>(initial.mappedNodes);
+  const [edges, setEdges] = useState<Edge[]>(initial.mappedEdges);
   const [filterType, setFilterType] = useState<string>("all");
   const [isInteractive, setIsInteractive] = useState(true);
+  const hasInitializedRef = useRef(false);
 
   const nodeTypes = useMemo(
     () => ({
@@ -61,52 +111,37 @@ export function UniverseCanvas({ viewMode = "spatial" }: UniverseCanvasProps) {
     []
   );
 
-  const fetchGraph = useCallback(async () => {
-    const wsId = currentWorkspace?.id || "ws_prime";
-    try {
-      setLoading(true);
-      setError(null);
-      const graph = await api.getGraph(wsId);
-      const mappedNodes: Node[] = (graph.nodes || []).map((n: any) => ({
-        id: n.id,
-        type: n.entity_type,
-        position: { x: n.position_x, y: n.position_y },
-        data: {
-          ...n.metadata,
-          title: n.metadata?.title || n.title || "Untitled Entity",
-          progress: n.metadata?.progress ?? n.progress ?? 50,
-          priority: n.metadata?.priority || n.priority || "medium",
-          status: n.metadata?.status || n.status || "todo",
-          entityId: n.entity_id || n.id,
-          workspaceId: n.workspace_id || wsId,
-        },
-      }));
-
-      const mappedEdges: Edge[] = (graph.edges || []).map((e: any) => ({
-        id: e.id,
-        source: e.source_node_id,
-        target: e.target_node_id,
-        animated: e.relationship_type === "depends_on",
-        style: {
-          stroke: e.relationship_type === "depends_on" ? "#a7f3d0" : "#2a3d38",
-          strokeWidth: 1.5,
-          opacity: 0.85,
-        },
-      }));
-
-      setNodes(mappedNodes);
-      setEdges(mappedEdges);
-    } catch (err: any) {
-      console.error("Failed to load universe graph:", err);
-      setError("Unable to synchronize coordinates with the workspace API.");
-    } finally {
-      setLoading(false);
-    }
-  }, [currentWorkspace?.id]);
-
+  // Sync with store updates smoothly in background
   useEffect(() => {
-    fetchGraph();
-  }, [fetchGraph]);
+    if (graphNodes.length > 0) {
+      const { mappedNodes, mappedEdges } = mapGraphToFlow(graphNodes, graphEdges, wsId);
+      // Preserve local positions if node is currently being dragged
+      setNodes((prevNodes) => {
+        if (prevNodes.length === 0) return mappedNodes;
+        const prevMap = new Map(prevNodes.map((n) => [n.id, n]));
+        return mappedNodes.map((n) => {
+          const existing = prevMap.get(n.id);
+          if (existing && existing.position) {
+            return {
+              ...n,
+              position: existing.position,
+              data: { ...n.data, ...existing.data },
+            };
+          }
+          return n;
+        });
+      });
+      setEdges(mappedEdges);
+    }
+  }, [graphNodes, graphEdges, wsId]);
+
+  // Background revalidation on mount
+  useEffect(() => {
+    if (!hasInitializedRef.current) {
+      hasInitializedRef.current = true;
+      revalidateGraph(wsId);
+    }
+  }, [wsId, revalidateGraph]);
 
   const onNodesChange: OnNodesChange = useCallback(
     (changes) => setNodes((nds) => applyNodeChanges(changes, nds)),
@@ -121,7 +156,6 @@ export function UniverseCanvas({ viewMode = "spatial" }: UniverseCanvasProps) {
   const onConnect = useCallback(
     async (connection: Connection) => {
       setEdges((eds) => addEdge(connection, eds));
-      const wsId = currentWorkspace?.id || "ws_prime";
       if (connection.source && connection.target) {
         try {
           await api.createGraphEdge(wsId, {
@@ -134,13 +168,19 @@ export function UniverseCanvas({ viewMode = "spatial" }: UniverseCanvasProps) {
         }
       }
     },
-    [currentWorkspace?.id]
+    [wsId]
   );
 
   const onNodeDragStop = useCallback(
     async (_event: unknown, node: Node) => {
-      const wsId = currentWorkspace?.id || "ws_prime";
       try {
+        updateGraphPositions([
+          {
+            id: node.id,
+            position_x: node.position.x,
+            position_y: node.position.y,
+          },
+        ]);
         await api.updateGraphLayout(wsId, [
           {
             id: node.id,
@@ -152,59 +192,13 @@ export function UniverseCanvas({ viewMode = "spatial" }: UniverseCanvasProps) {
         console.error("Failed to persist node position:", err);
       }
     },
-    [currentWorkspace?.id]
+    [wsId, updateGraphPositions]
   );
 
   const displayedNodes = useMemo(() => {
     if (filterType === "all") return nodes;
     return nodes.filter((n) => n.type === filterType);
   }, [nodes, filterType]);
-
-  // Loading State
-  if (loading) {
-    return (
-      <div className="h-full w-full flex flex-col items-center justify-center p-6 bg-[#080d10] relative">
-        <GlassPanel elevation="elevated" className="p-6 flex flex-col items-center gap-3 text-center max-w-xs border-[#202e2b]">
-          <div className="h-10 w-10 rounded-xl bg-[#15221e] border border-[#202e2b] flex items-center justify-center text-[#a7f3d0]">
-            <Compass className="h-5 w-5 animate-spin" style={{ animationDuration: "8s" }} />
-          </div>
-          <div>
-            <h3 className="text-xs font-mono uppercase tracking-widest text-[#f1f5f4] font-medium">
-              Loading Workspace Graph
-            </h3>
-            <p className="text-[11px] text-[#6e807d] font-mono mt-0.5">
-              Calibrating spatial coordinates...
-            </p>
-          </div>
-        </GlassPanel>
-      </div>
-    );
-  }
-
-  // Error State
-  if (error) {
-    return (
-      <div className="h-full w-full flex items-center justify-center p-6 bg-[#080d10]">
-        <GlassPanel elevation="elevated" className="p-6 max-w-sm text-center flex flex-col items-center gap-3 border-[#f87171]/30">
-          <div className="p-2.5 rounded-xl bg-[#f87171]/10 text-[#f87171] border border-[#f87171]/20">
-            <AlertCircle className="h-5 w-5" />
-          </div>
-          <div>
-            <h3 className="text-sm font-semibold text-[#f1f5f4]">Connection Interrupted</h3>
-            <p className="text-xs text-[#9aaba8] mt-1">{error}</p>
-          </div>
-          <GlassButton
-            variant="primary"
-            size="sm"
-            icon={<RefreshCw className="h-3 w-3" />}
-            onClick={fetchGraph}
-          >
-            Retry
-          </GlassButton>
-        </GlassPanel>
-      </div>
-    );
-  }
 
   // Accessible Tree View Alternative (WCAG 2.2 AA)
   if (viewMode === "tree") {
@@ -298,8 +292,8 @@ export function UniverseCanvas({ viewMode = "spatial" }: UniverseCanvasProps) {
     );
   }
 
-  // Empty Fallback
-  if (nodes.length === 0) {
+  // Fallback if completely empty
+  if (nodes.length === 0 && isGraphLoaded) {
     return (
       <div className="h-full w-full flex items-center justify-center p-6 bg-[#080d10] relative">
         <EmptyState
@@ -308,20 +302,24 @@ export function UniverseCanvas({ viewMode = "spatial" }: UniverseCanvasProps) {
           actionLabel="Plan with AI"
           onAction={() => setAiModalOpen(true)}
           secondaryActionLabel="Refresh"
-          onSecondaryAction={fetchGraph}
+          onSecondaryAction={() => revalidateGraph(wsId)}
         />
       </div>
     );
   }
 
-  // Signature Spatial Canvas with React Flow (Systems in Motion aesthetic)
+  // Signature Spatial Canvas with React Flow (instant render, zero flicker)
   return (
     <div className="h-full w-full bg-[#080d10] relative select-none overflow-hidden">
       {/* Floating Canvas Header Overlay */}
       <div className="absolute top-3 left-4 z-10 pointer-events-none flex items-center gap-2.5">
         <div className="px-3 py-1.5 rounded-lg glass-standard text-xs font-mono text-[#d6dedc] pointer-events-auto border-[#202e2b] shadow-sm flex items-center gap-2 bg-[#101918]/90">
-          <span className={`w-1.5 h-1.5 rounded-full ${isInteractive ? "bg-[#34d399]" : "bg-[#f87171]"}`} />
-          <span>{isInteractive ? "Interactive" : "Locked"}</span>
+          <span
+            className={`w-1.5 h-1.5 rounded-full ${
+              isSyncing ? "bg-[#38bdf8] animate-pulse" : isInteractive ? "bg-[#34d399]" : "bg-[#f87171]"
+            }`}
+          />
+          <span>{isSyncing ? "Syncing..." : isInteractive ? "Interactive" : "Locked"}</span>
           <span className="text-[#6e807d]">•</span>
           <span>{nodes.length} Nodes</span>
           <span className="text-[#6e807d]">•</span>
@@ -344,6 +342,14 @@ export function UniverseCanvas({ viewMode = "spatial" }: UniverseCanvasProps) {
             </button>
           ))}
         </div>
+
+        <button
+          onClick={() => revalidateGraph(wsId)}
+          className="p-1.5 rounded-lg bg-[#101918]/90 border border-[#202e2b] text-[#9aaba8] hover:text-[#a7f3d0] pointer-events-auto transition-colors"
+          title="Refresh spatial coordinates from Neon DB"
+        >
+          <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? "animate-spin" : ""}`} />
+        </button>
       </div>
 
       <ReactFlow
@@ -362,7 +368,7 @@ export function UniverseCanvas({ viewMode = "spatial" }: UniverseCanvasProps) {
         zoomOnPinch={isInteractive}
         zoomOnDoubleClick={isInteractive}
         panOnScroll={isInteractive}
-        fitView
+        defaultViewport={{ x: 0, y: 0, zoom: 0.9 }}
         className={`spatial-canvas-grid ${!isInteractive ? "!cursor-default [&_.react-flow__pane]:!cursor-default" : ""}`}
         minZoom={0.2}
         maxZoom={2.5}

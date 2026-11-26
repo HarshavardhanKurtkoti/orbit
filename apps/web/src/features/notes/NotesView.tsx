@@ -19,14 +19,25 @@ import { api } from "@/lib/api";
 import { GlassButton } from "@/components/ui/GlassButton";
 
 export function NotesView() {
-  const { currentWorkspace } = useWorkspaceStore();
-  const [notes, setNotes] = useState<any[]>([]);
-  const [selectedNote, setSelectedNote] = useState<any>(null);
+  const { currentWorkspace, notes: storeNotes, setNotes: setStoreNotes } = useWorkspaceStore();
+  const [notes, setNotes] = useState<any[]>(storeNotes);
+  const [selectedNote, setSelectedNote] = useState<any>(storeNotes[0] || null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
+  const [title, setTitle] = useState(storeNotes[0]?.title || "");
+  const [content, setContent] = useState(storeNotes[0]?.content || "");
   const [isSaved, setIsSaved] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (storeNotes && storeNotes.length > 0) {
+      setNotes(storeNotes);
+      if (!selectedNote) {
+        setSelectedNote(storeNotes[0]);
+        setTitle(storeNotes[0].title);
+        setContent(storeNotes[0].content);
+      }
+    }
+  }, [storeNotes, selectedNote]);
 
   useEffect(() => {
     if (!currentWorkspace?.id) return;
@@ -34,7 +45,8 @@ export function NotesView() {
       try {
         const data = await api.listNotes(currentWorkspace.id);
         setNotes(data);
-        if (data.length > 0) {
+        setStoreNotes(data);
+        if (data.length > 0 && !selectedNote) {
           setSelectedNote(data[0]);
           setTitle(data[0].title);
           setContent(data[0].content);
@@ -44,7 +56,7 @@ export function NotesView() {
       }
     }
     fetchNotes();
-  }, [currentWorkspace?.id]);
+  }, [currentWorkspace?.id, setStoreNotes, selectedNote]);
 
   const handleSelectNote = (note: any) => {
     setSelectedNote(note);
@@ -91,7 +103,7 @@ export function NotesView() {
   };
 
   const insertFormatting = (prefix: string, suffix: string = "") => {
-    setContent((prev) => `${prev}\n${prefix}Text${suffix}`);
+    setContent((prev: string) => `${prev}\n${prefix}Text${suffix}`);
     setIsSaved(false);
   };
 

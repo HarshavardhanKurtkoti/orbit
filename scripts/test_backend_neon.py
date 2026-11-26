@@ -19,6 +19,15 @@ async def main():
         assert data.get("checks", {}).get("database") == "connected", "Database is not connected!"
         print(">> FastAPI + Neon PostgreSQL connection: VERIFIED (connected)!")
 
+        # Test Prometheus metrics endpoint
+        mres = await client.get("/metrics")
+        print("GET /metrics status:", mres.status_code)
+        assert mres.status_code == 200, f"Expected 200, got {mres.status_code}"
+        print(">> Prometheus metrics preview:\n" + "\n".join(mres.text.strip().splitlines()[:15]))
+        assert "orbit_api_status 1" in mres.text
+        assert "orbit_graph_nodes_total" in mres.text
+        print(">> Prometheus metrics endpoint: VERIFIED!")
+
         # Test database read query via public endpoint or database directly
         from app.core.database import engine
         from sqlalchemy import text

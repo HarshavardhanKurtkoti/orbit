@@ -18,14 +18,38 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { GlassButton } from "@/components/ui/GlassButton";
 
 export function TasksView() {
-  const { currentWorkspace, setSelectedEntity } = useWorkspaceStore();
-  const [tasks, setTasks] = useState<any[]>([]);
-  const [projects, setProjects] = useState<any[]>([]);
+  const {
+    currentWorkspace,
+    setSelectedEntity,
+    tasks: storeTasks,
+    projects: storeProjects,
+    setTasks: setStoreTasks,
+    setProjects: setStoreProjects,
+  } = useWorkspaceStore();
+
+  const [tasks, setTasks] = useState<any[]>(storeTasks);
+  const [projects, setProjects] = useState<any[]>(storeProjects);
   const [newTaskTitle, setNewTaskTitle] = useState("");
-  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
+  const [selectedProjectId, setSelectedProjectId] = useState<string>(
+    storeProjects[0]?.id || ""
+  );
   const [selectedPriority, setSelectedPriority] = useState<string>("medium");
   const [filterPriority, setFilterPriority] = useState<string>("all");
   const [isCreatingInLane, setIsCreatingInLane] = useState<string | null>(null);
+
+  // Sync with store updates
+  useEffect(() => {
+    if (storeTasks && storeTasks.length > 0) {
+      setTasks(storeTasks);
+    }
+  }, [storeTasks]);
+
+  useEffect(() => {
+    if (storeProjects && storeProjects.length > 0) {
+      setProjects(storeProjects);
+      if (!selectedProjectId) setSelectedProjectId(storeProjects[0].id);
+    }
+  }, [storeProjects, selectedProjectId]);
 
   useEffect(() => {
     if (!currentWorkspace?.id) return;
@@ -37,13 +61,15 @@ export function TasksView() {
         ]);
         setTasks(taskData);
         setProjects(projData);
+        setStoreTasks(taskData);
+        setStoreProjects(projData);
         if (projData.length > 0) setSelectedProjectId(projData[0].id);
       } catch (err) {
         console.error("Tasks fetch error:", err);
       }
     }
     fetchTasks();
-  }, [currentWorkspace?.id]);
+  }, [currentWorkspace?.id, setStoreTasks, setStoreProjects]);
 
   const handleCreateTask = async (e?: React.FormEvent, laneStatus: string = "todo") => {
     if (e) e.preventDefault();
