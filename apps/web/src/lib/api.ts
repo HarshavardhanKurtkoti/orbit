@@ -415,10 +415,16 @@ class ApiClient {
   }
 
   getToken(): string | null {
+    if (!this.token && typeof window !== "undefined") {
+      this.token = localStorage.getItem("orbit_token");
+    }
     return this.token;
   }
 
   getRefreshToken(): string | null {
+    if (!this.refreshToken && typeof window !== "undefined") {
+      this.refreshToken = localStorage.getItem("orbit_refresh_token");
+    }
     return this.refreshToken;
   }
 

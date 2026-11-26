@@ -15,6 +15,7 @@ import {
   Search,
   X,
   Menu,
+  LogOut,
 } from "lucide-react";
 import { useWorkspaceStore, NavTab } from "@/stores/workspace-store";
 import { api } from "@/lib/api";
@@ -73,6 +74,8 @@ export function Shell({ children, activeTab: propTab }: ShellProps) {
   } = useWorkspaceStore();
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
   // Derive active tab from current URL pathname or explicit prop
   const activeTab: NavTab = useMemo(() => {
@@ -94,23 +97,47 @@ export function Shell({ children, activeTab: propTab }: ShellProps) {
     }
   }, [activeTab, storeTab, setActiveTab]);
 
-  // Background authenticate with demo account and seed workspace data
+  // Route Protection & Session Initialization
   useEffect(() => {
+    const token = api.getToken();
+    if (!token) {
+      setIsAuthenticated(false);
+      router.replace("/login");
+      return;
+    }
+
+    setIsAuthenticated(true);
+
     async function init() {
       try {
-        await api.demoLogin();
+        const user = await api.getMe();
+        setCurrentUser(user);
         const wsList = await api.listWorkspaces();
         if (wsList && wsList.length > 0) {
           setWorkspaces(wsList);
           setCurrentWorkspace(wsList[0]);
           loadWorkspaceData(wsList[0].id);
         }
-      } catch (err) {
-        console.warn("Workspace init fallback active:", err);
+      } catch (err: any) {
+        console.warn("Workspace init warning:", err);
+        if (err?.message?.includes("401") || err?.message?.includes("credentials")) {
+          api.setTokens(null, null);
+          setIsAuthenticated(false);
+          router.replace("/login");
+        }
       }
     }
     init();
-  }, [setCurrentWorkspace, setWorkspaces, loadWorkspaceData]);
+  }, [router, setCurrentWorkspace, setWorkspaces, loadWorkspaceData]);
+
+  const handleLogout = async () => {
+    try {
+      await api.logout();
+    } finally {
+      setIsAuthenticated(false);
+      router.replace("/login");
+    }
+  };
 
   // Global Ctrl+K / Cmd+K listener
   useEffect(() => {
@@ -123,6 +150,24 @@ export function Shell({ children, activeTab: propTab }: ShellProps) {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isCommandPaletteOpen, setCommandPaletteOpen]);
+
+  if (isAuthenticated !== true) {
+    return (
+      <AmbientBackground>
+        <div className="flex h-screen w-screen items-center justify-center text-xs font-mono text-[#a7f3d0] bg-[#080d10]">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-[#15221e] border border-[#202e2b] flex items-center justify-center text-[#a7f3d0] animate-pulse">
+              <Compass className="h-5 w-5" />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-[#34d399] animate-ping" />
+              <span>Verifying Orbit session...</span>
+            </div>
+          </div>
+        </div>
+      </AmbientBackground>
+    );
+  }
 
   return (
     <AmbientBackground>
@@ -242,6 +287,30 @@ export function Shell({ children, activeTab: propTab }: ShellProps) {
                   <span>AI Architect</span>
                 </button>
               </div>
+            </div>
+
+            {/* USER PROFILE & LOGOUT FOOTER */}
+            <div className="pt-3 border-t border-[#16221f] flex items-center justify-between">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-7 h-7 rounded-full bg-[#15221e] border border-[#202e2b] flex items-center justify-center font-mono text-xs text-[#a7f3d0] font-bold shrink-0">
+                  {currentUser?.display_name?.slice(0, 1).toUpperCase() || "C"}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs font-medium text-[#f1f5f4] truncate">
+                    {currentUser?.display_name || "Orbit User"}
+                  </div>
+                  <div className="text-[10px] text-[#6e807d] font-mono capitalize">
+                    {currentUser?.role || "member"}
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="p-1.5 rounded-lg text-[#6e807d] hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+                title="Sign out of Orbit"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+              </button>
             </div>
           </div>
         </aside>
