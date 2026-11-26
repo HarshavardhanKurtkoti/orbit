@@ -59,7 +59,6 @@ async def generate_workspace_job(
     )
     db.add(job)
     await db.commit()
-    await db.refresh(job)
 
     try:
         plan_dict = await AiWorkspaceService.generate_plan(request.prompt)
@@ -72,7 +71,6 @@ async def generate_workspace_job(
         job.completed_at = datetime.now(timezone.utc)
 
     await db.commit()
-    await db.refresh(job)
     return AiJobResponse.model_validate(job)
 
 
@@ -98,11 +96,17 @@ async def confirm_ai_job(
 ):
     result = await db.execute(select(AiGenerationJob).where(AiGenerationJob.id == job_id))
     job = result.scalar_one_or_none()
-    if not job:
-        raise HTTPException(status_code=404, detail="AI job not found")
+    
+    workspace_id = confirm_in.workspace_id or (job.workspace_id if job else None)
+    if not workspace_id:
+        ws_res = await db.execute(select(Workspace).where(Workspace.owner_id == current_user.id).limit(1))
+        ws = ws_res.scalar_one_or_none()
+        if ws:
+            workspace_id = ws.id
+        else:
+            raise HTTPException(status_code=404, detail="Workspace not found")
 
     plan = confirm_in.plan
-    workspace_id = job.workspace_id
 
     # Create Goal representing the overall plan
     goal = Goal(

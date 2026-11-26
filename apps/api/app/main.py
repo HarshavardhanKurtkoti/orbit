@@ -11,6 +11,7 @@ from app.core.database import engine
 from app.core.redis import close_redis, get_redis
 from app.models.base import Base
 from app.api.v1.router import api_router
+from app.api.v1.metrics import router as metrics_router
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -68,6 +69,7 @@ app.add_middleware(
 )
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
+app.include_router(metrics_router)
 
 
 @app.get("/health", status_code=status.HTTP_200_OK)
@@ -89,10 +91,10 @@ async def health_check():
     except Exception as e:
         checks["database"] = f"unhealthy: {str(e)[:80]}"
 
-    # Verify Redis connectivity
+    # Verify Redis connectivity with tight timeout to avoid blocking
     try:
         r = await get_redis()
-        pong = await r.ping()
+        pong = await asyncio.wait_for(r.ping(), timeout=0.3)
         checks["redis"] = "connected" if pong else "disconnected"
     except Exception as e:
         checks["redis"] = f"unhealthy: {str(e)[:80]}"

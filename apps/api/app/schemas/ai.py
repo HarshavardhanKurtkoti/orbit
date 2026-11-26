@@ -12,21 +12,21 @@ class TaskBlueprint(BaseModel):
 
 class ProjectBlueprint(BaseModel):
     title: str
-    description: str
+    description: str = ""
     priority: str = "medium"
-    tasks: list[TaskBlueprint]
+    tasks: list[TaskBlueprint] = []
 
 
 class MilestoneBlueprint(BaseModel):
     title: str
-    target_week: int
+    target_week: int = 1
 
 
 class AiGeneratedPlan(BaseModel):
     title: str
-    description: str
-    projects: list[ProjectBlueprint]
-    milestones: list[MilestoneBlueprint]
+    description: str = ""
+    projects: list[ProjectBlueprint] = []
+    milestones: list[MilestoneBlueprint] = []
 
 
 class AiPromptRequest(BaseModel):
@@ -51,3 +51,4 @@ class AiJobResponse(BaseModel):
 
 class AiJobConfirmRequest(BaseModel):
     plan: AiGeneratedPlan
+    workspace_id: str | None = None

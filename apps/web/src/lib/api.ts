@@ -366,11 +366,13 @@ When nodes are dragged across spatial coordinates, updates are debounced and syn
 
 class ApiClient {
   private token: string | null = null;
+  private refreshToken: string | null = null;
   private localState = JSON.parse(JSON.stringify(INITIAL_DEMO_DATA));
 
   constructor() {
     if (typeof window !== "undefined") {
       this.token = localStorage.getItem("orbit_token");
+      this.refreshToken = localStorage.getItem("orbit_refresh_token");
       try {
         const cached = localStorage.getItem("orbit_local_state");
         if (cached) {
@@ -393,73 +395,293 @@ class ApiClient {
   }
 
   setToken(token: string | null) {
-    this.token = token;
+    this.setTokens(token);
+  }
+
+  setTokens(accessToken: string | null, refreshToken?: string | null) {
+    this.token = accessToken;
+    if (refreshToken !== undefined) {
+      this.refreshToken = refreshToken;
+    }
     if (typeof window !== "undefined") {
-      if (token) localStorage.setItem("orbit_token", token);
+      if (accessToken) localStorage.setItem("orbit_token", accessToken);
       else localStorage.removeItem("orbit_token");
+
+      if (refreshToken !== undefined) {
+        if (refreshToken) localStorage.setItem("orbit_refresh_token", refreshToken);
+        else localStorage.removeItem("orbit_refresh_token");
+      }
     }
   }
 
   getToken(): string | null {
+    if (!this.token && typeof window !== "undefined") {
+      this.token = localStorage.getItem("orbit_token");
+    }
     return this.token;
   }
 
-  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-      ...(options.headers as Record<string, string>),
-    };
-
-    if (this.token) {
-      headers["Authorization"] = `Bearer ${this.token}`;
+  getRefreshToken(): string | null {
+    if (!this.refreshToken && typeof window !== "undefined") {
+      this.refreshToken = localStorage.getItem("orbit_refresh_token");
     }
+    return this.refreshToken;
+  }
 
-    const isAi = endpoint.startsWith("/ai");
-    const timeoutMs = isAi ? 60000 : 15000;
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  getTokens() {
+    return {
+      accessToken: this.token,
+      refreshToken: this.refreshToken,
+    };
+  }
 
+  decodeJwt(jwtString?: string | null): any {
+    const t = jwtString || this.token;
+    if (!t) return null;
     try {
-      const response = await fetch(`${API_BASE}${endpoint}`, {
-        ...options,
-        headers,
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: "Request failed" }));
-        throw new Error(errorData.detail || `HTTP Error ${response.status}`);
-      }
-
-      return response.json();
-    } catch (err: any) {
-      clearTimeout(timeoutId);
-      throw err;
+      const parts = t.split(".");
+      if (parts.length < 2) return null;
+      const payload = atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"));
+      return JSON.parse(payload);
+    } catch {
+      return null;
     }
   }
 
+  // Synchronous cache accessors for instant, zero-latency rendering
+  getCachedState() {
+    return this.localState;
+  }
+
+  getCachedGraph() {
+    return this.localState.graph || { nodes: [], edges: [] };
+  }
+
+  getCachedProjects() {
+    return this.localState.projects || [];
+  }
+
+  getCachedTasks() {
+    return this.localState.tasks || [];
+  }
+
+  getCachedNotes() {
+    return this.localState.notes || [];
+  }
+
+  getCachedWorkspaces() {
+    return this.localState.workspaces || [];
+  }
+
+  // High-performance request deduping and short-lived in-flight cache
+  private inFlightRequests = new Map<string, Promise<any>>();
+  private responseCache = new Map<string, { timestamp: number; data: any }>();
+  private cacheTtlMs = 2500;
+
+  private async request<T>(endpoint: string, options: RequestInit = {}, isRetry: boolean = false): Promise<T> {
+    const method = (options.method || "GET").toUpperCase();
+    const isGet = method === "GET";
+    const cacheKey = `${endpoint}`;
+
+    // On mutations, bust the cache so following reads immediately fetch fresh database records
+    if (!isGet) {
+      this.responseCache.clear();
+    } else if (!isRetry) {
+      // 1. In-flight promise deduplication: share the active promise across simultaneous callers
+      const existingPromise = this.inFlightRequests.get(cacheKey);
+      if (existingPromise) {
+        return existingPromise;
+      }
+
+      // 2. Short-lived SWR cache: return immediately if fetched within the last 2.5 seconds
+      const cached = this.responseCache.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < this.cacheTtlMs) {
+        return cached.data;
+      }
+    }
+
+    const executeRequest = async (): Promise<T> => {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        ...(options.headers as Record<string, string>),
+      };
+
+      const token = this.getToken();
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      const isAi = endpoint.startsWith("/ai");
+      const timeoutMs = isAi ? 60000 : 15000;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+      try {
+        const response = await fetch(`${API_BASE}${endpoint}`, {
+          ...options,
+          headers,
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        // Handle 401 Unauthorized with automatic refresh token rotation
+        if (response.status === 401 && !isRetry && !endpoint.includes("/auth/refresh") && this.refreshToken) {
+          try {
+            const refreshed = await this.refreshSession();
+            if (refreshed?.access_token) {
+              return this.request<T>(endpoint, options, true);
+            }
+          } catch {
+            // Token refresh failed, continue to throw original error
+          }
+        }
+
+        if (!response.ok) {
+          let errorDetail = `HTTP Error ${response.status}`;
+          try {
+            const errorText = await response.text();
+            if (errorText) {
+              const parsed = JSON.parse(errorText);
+              errorDetail = parsed.detail || parsed.message || errorDetail;
+            }
+          } catch {
+            // ignore parsing error
+          }
+          throw new Error(errorDetail);
+        }
+
+        if (response.status === 204) {
+          return null as unknown as T;
+        }
+
+        const text = await response.text();
+        if (!text || !text.trim()) {
+          return null as unknown as T;
+        }
+
+        let result: T;
+        try {
+          result = JSON.parse(text) as T;
+        } catch {
+          result = text as unknown as T;
+        }
+
+        if (isGet) {
+          this.responseCache.set(cacheKey, { timestamp: Date.now(), data: result });
+        }
+        return result;
+      } catch (err: any) {
+        clearTimeout(timeoutId);
+        throw err;
+      }
+    };
+
+    if (isGet && !isRetry) {
+      const reqPromise = executeRequest().finally(() => {
+        this.inFlightRequests.delete(cacheKey);
+      });
+      this.inFlightRequests.set(cacheKey, reqPromise);
+      return reqPromise;
+    }
+
+    return executeRequest();
+  }
+
   // Auth
+  async login(credentials: { email: string; password: string }) {
+    const data = await this.request<{
+      access_token: string;
+      refresh_token: string;
+      token_type: string;
+      expires_in: number;
+      user: any;
+    }>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify(credentials),
+    });
+    this.setTokens(data.access_token, data.refresh_token);
+    return data;
+  }
+
+  async register(payload: {
+    email: string;
+    password: string;
+    display_name: string;
+    role?: string;
+  }) {
+    const data = await this.request<{
+      access_token: string;
+      refresh_token: string;
+      token_type: string;
+      expires_in: number;
+      user: any;
+    }>("/auth/register", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    this.setTokens(data.access_token, data.refresh_token);
+    return data;
+  }
+
   async demoLogin() {
     try {
-      const data = await this.request<{ access_token: string; user: any }>("/auth/demo", {
+      const data = await this.request<{
+        access_token: string;
+        refresh_token: string;
+        token_type: string;
+        expires_in: number;
+        user: any;
+      }>("/auth/demo", {
         method: "POST",
       });
-      this.setToken(data.access_token);
+      this.setTokens(data.access_token, data.refresh_token);
       return data;
     } catch {
       // Offline fallback
       const fallback = {
         access_token: "demo_spatial_jwt_token",
+        refresh_token: "demo_spatial_refresh_token",
+        token_type: "bearer",
+        expires_in: 604800,
         user: {
           id: "usr_commander",
-          email: "commander@orbit.system",
-          displayName: "Commander Orbit",
+          email: "commander@orbit.internal",
+          display_name: "Orbit Commander",
+          role: "admin",
+          status: "active",
         },
       };
-      this.setToken(fallback.access_token);
+      this.setTokens(fallback.access_token, fallback.refresh_token);
       return fallback;
+    }
+  }
+
+  async refreshSession() {
+    if (!this.refreshToken) {
+      throw new Error("No refresh token available");
+    }
+    const data = await this.request<{
+      access_token: string;
+      refresh_token: string;
+      token_type: string;
+      expires_in: number;
+      user: any;
+    }>("/auth/refresh", {
+      method: "POST",
+      body: JSON.stringify({ refresh_token: this.refreshToken }),
+    });
+    this.setTokens(data.access_token, data.refresh_token);
+    return data;
+  }
+
+  async logout() {
+    try {
+      await this.request<any>("/auth/logout", { method: "POST" });
+    } catch {
+      // proceed with local cleanup
+    } finally {
+      this.setTokens(null, null);
     }
   }
 
@@ -469,19 +691,142 @@ class ApiClient {
     } catch {
       return {
         id: "usr_commander",
-        email: "commander@orbit.system",
-        displayName: "Commander Orbit",
+        email: "commander@orbit.internal",
+        display_name: "Orbit Commander",
+        role: "admin",
+        status: "active",
       };
     }
+  }
+
+  // Users Management
+  async listUsers(params?: { q?: string; role?: string; status?: string; page?: number; page_size?: number }) {
+    const searchParams = new URLSearchParams();
+    if (params?.q) searchParams.set("q", params.q);
+    if (params?.role && params.role !== "all") searchParams.set("role", params.role);
+    if (params?.status && params.status !== "all") searchParams.set("status", params.status);
+    if (params?.page) searchParams.set("page", String(params.page));
+    if (params?.page_size) searchParams.set("page_size", String(params.page_size));
+
+    const qs = searchParams.toString();
+    try {
+      return await this.request<{
+        users: any[];
+        total: number;
+        page: number;
+        page_size: number;
+      }>(`/users${qs ? `?${qs}` : ""}`);
+    } catch {
+      // Local fallback
+      return {
+        users: [
+          {
+            id: "usr_commander",
+            email: "commander@orbit.internal",
+            display_name: "Orbit Commander",
+            role: "admin",
+            status: "active",
+            created_at: new Date(Date.now() - 86400000 * 10).toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+          {
+            id: "usr_neural",
+            email: "research@orbit.internal",
+            display_name: "Neural Research Lead",
+            role: "member",
+            status: "active",
+            created_at: new Date(Date.now() - 86400000 * 5).toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+        ],
+        total: 2,
+        page: 1,
+        page_size: 20,
+      };
+    }
+  }
+
+  async createUser(payload: {
+    email: string;
+    display_name: string;
+    password: string;
+    role?: string;
+    status?: string;
+  }) {
+    return await this.request<any>("/users", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async updateUser(userId: string, payload: any) {
+    return await this.request<any>(`/users/${userId}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async deleteUser(userId: string) {
+    return await this.request<any>(`/users/${userId}`, {
+      method: "DELETE",
+    });
   }
 
   // Workspaces
   async listWorkspaces() {
     try {
-      return await this.request<any[]>("/workspaces");
+      const res = await this.request<any[]>("/workspaces");
+      if (Array.isArray(res) && res.length > 0) {
+        this.localState.workspaces = res;
+      }
+      return res;
     } catch {
       return this.localState.workspaces;
     }
+  }
+
+  async createWorkspace(data: { name: string; description?: string; settings?: any }) {
+    try {
+      const res = await this.request<any>("/workspaces", {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+      if (res && res.id) {
+        this.localState.workspaces = [res, ...this.localState.workspaces.filter((w: any) => w.id !== res.id)];
+      }
+      return res;
+    } catch (err) {
+      console.warn("createWorkspace remote failed, using localState fallback:", err);
+      const fallback = {
+        id: `ws_${Date.now()}`,
+        name: data.name,
+        description: data.description || "",
+        settings: data.settings || {},
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      this.localState.workspaces.unshift(fallback);
+      return fallback;
+    }
+  }
+
+  async updateWorkspace(workspaceId: string, data: any) {
+    const res = await this.request<any>(`/workspaces/${workspaceId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+    if (res && res.id) {
+      this.localState.workspaces = this.localState.workspaces.map((w: any) => w.id === res.id ? { ...w, ...res } : w);
+    }
+    return res;
+  }
+
+  async deleteWorkspace(workspaceId: string) {
+    const res = await this.request<any>(`/workspaces/${workspaceId}`, {
+      method: "DELETE",
+    });
+    this.localState.workspaces = this.localState.workspaces.filter((w: any) => w.id !== workspaceId);
+    return res;
   }
 
   // Projects
@@ -680,7 +1025,12 @@ class ApiClient {
   // Graph
   async getGraph(workspaceId: string) {
     try {
-      return await this.request<{ nodes: any[]; edges: any[] }>(`/workspaces/${workspaceId}/graph`);
+      const data = await this.request<{ nodes: any[]; edges: any[] }>(`/workspaces/${workspaceId}/graph`);
+      if (data && Array.isArray(data.nodes) && data.nodes.length > 0) {
+        this.localState.graph = data;
+        this.saveLocal();
+      }
+      return data;
     } catch {
       return this.localState.graph;
     }
@@ -768,16 +1118,21 @@ class ApiClient {
               ],
             },
           ],
+          milestones: [
+            { title: "Subsystem Specifications Approved", target_week: 1 },
+            { title: "Spatial Graph Binding Operational", target_week: 2 },
+            { title: "Production Verification Complete", target_week: 3 },
+          ],
         },
       };
     }
   }
 
-  async confirmAiJob(jobId: string, plan: any) {
+  async confirmAiJob(jobId: string, plan: any, workspaceId?: string) {
     try {
       return await this.request<any>(`/ai/jobs/${jobId}/confirm`, {
         method: "POST",
-        body: JSON.stringify({ plan }),
+        body: JSON.stringify({ plan, workspace_id: workspaceId }),
       });
     } catch {
       if (plan && plan.projects) {

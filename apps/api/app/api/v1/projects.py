@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.database import get_db
-from app.core.security import get_current_user
+from app.core.security import get_current_user, verify_workspace_access
 from app.models.user import User
 from app.models.project import Project
 from app.models.graph import GraphNode
@@ -18,6 +18,7 @@ async def list_projects(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    await verify_workspace_access(workspace_id, current_user.id, db)
     query = select(Project).where(Project.workspace_id == workspace_id).order_by(Project.created_at.desc())
     result = await db.execute(query)
     projects = result.scalars().all()
@@ -30,6 +31,7 @@ async def create_project(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    await verify_workspace_access(project_in.workspace_id, current_user.id, db)
     project = Project(
         workspace_id=project_in.workspace_id,
         title=project_in.title,

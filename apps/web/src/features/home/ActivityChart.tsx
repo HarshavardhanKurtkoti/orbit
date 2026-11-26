@@ -5,10 +5,10 @@ import { Activity, TrendingUp } from "lucide-react";
 import { GlassPanel } from "@/components/ui/GlassPanel";
 
 interface ActivityChartProps {
-  tasks: any[];
+  tasks?: any[];
 }
 
-export const ActivityChart: React.FC<ActivityChartProps> = ({ tasks }) => {
+export const ActivityChart: React.FC<ActivityChartProps> = ({ tasks = [] }) => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   // Group completed tasks over the past 7 days based on real task completed/updated dates

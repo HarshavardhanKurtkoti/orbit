@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.database import get_db
-from app.core.security import get_current_user
+from app.core.security import get_current_user, verify_workspace_access
 from app.models.user import User
 from app.models.workspace import Workspace, WorkspaceMember
 from app.schemas.workspace import WorkspaceCreate, WorkspaceResponse, WorkspaceUpdate
@@ -59,6 +59,7 @@ async def get_workspace(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    await verify_workspace_access(workspace_id, current_user.id, db)
     result = await db.execute(select(Workspace).where(Workspace.id == workspace_id))
     workspace = result.scalar_one_or_none()
     if not workspace:
@@ -73,6 +74,7 @@ async def update_workspace(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    await verify_workspace_access(workspace_id, current_user.id, db)
     result = await db.execute(select(Workspace).where(Workspace.id == workspace_id))
     workspace = result.scalar_one_or_none()
     if not workspace:

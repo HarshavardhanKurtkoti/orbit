@@ -61,7 +61,7 @@ class AiWorkspaceService:
                     "X-Title": "ORBIT Spatial OS",
                     "Content-Type": "application/json",
                 }
-                async with httpx.AsyncClient(timeout=45.0) as client:
+                async with httpx.AsyncClient(timeout=18.0) as client:
                     response = await client.post(
                         "https://openrouter.ai/api/v1/chat/completions",
                         headers=headers,

@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.database import get_db
-from app.core.security import get_current_user
+from app.core.security import get_current_user, verify_workspace_access
 from app.models.user import User
 from app.models.note import Note
 from app.models.graph import GraphNode
@@ -18,6 +18,7 @@ async def list_notes(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    await verify_workspace_access(workspace_id, current_user.id, db)
     query = select(Note).where(Note.workspace_id == workspace_id).order_by(Note.updated_at.desc())
     result = await db.execute(query)
     notes = result.scalars().all()
@@ -30,6 +31,7 @@ async def create_note(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    await verify_workspace_access(note_in.workspace_id, current_user.id, db)
     note = Note(
         workspace_id=note_in.workspace_id,
         title=note_in.title,

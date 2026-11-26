@@ -2,18 +2,29 @@
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, X, Loader2, CheckCircle2, ArrowRight } from "lucide-react";
+import { Sparkles, X, Loader2, CheckCircle2, ArrowRight, Plus, FolderGit2, Check } from "lucide-react";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { api } from "@/lib/api";
 import { modalVariants } from "@/motion";
 import { GlassButton } from "@/components/ui/GlassButton";
 
 export function AiGeneratorModal() {
-  const { isAiModalOpen, setAiModalOpen, currentWorkspace, setActiveTab } = useWorkspaceStore();
+  const {
+    isAiModalOpen,
+    setAiModalOpen,
+    currentWorkspace,
+    workspaces,
+    setWorkspaces,
+    setCurrentWorkspace,
+    loadWorkspaceData,
+    setActiveTab,
+  } = useWorkspaceStore();
   const [prompt, setPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedJob, setGeneratedJob] = useState<any>(null);
   const [isConfirming, setIsConfirming] = useState(false);
+  const [destinationMode, setDestinationMode] = useState<"new" | "current">("new");
+  const [customWorkspaceName, setCustomWorkspaceName] = useState("");
 
   if (!isAiModalOpen) return null;
 
@@ -24,13 +35,16 @@ export function AiGeneratorModal() {
       setIsGenerating(true);
       let wsId = currentWorkspace?.id;
       if (!wsId || wsId === "ws_prime") {
-        const workspaces = await api.listWorkspaces();
-        if (workspaces && workspaces.length > 0) {
-          wsId = workspaces[0].id;
+        const wsList = await api.listWorkspaces();
+        if (wsList && wsList.length > 0) {
+          wsId = wsList[0].id;
         }
       }
       const job = await api.generateWorkspacePlan(wsId || "ws_prime", prompt.trim());
       setGeneratedJob(job);
+      if (job?.result?.project?.title) {
+        setCustomWorkspaceName(job.result.project.title);
+      }
     } catch (err) {
       console.error("AI generation failed:", err);
     } finally {
@@ -42,12 +56,34 @@ export function AiGeneratorModal() {
     if (!generatedJob?.id || !generatedJob?.result) return;
     try {
       setIsConfirming(true);
-      await api.confirmAiJob(generatedJob.id, generatedJob.result);
+      let targetWsId = currentWorkspace?.id;
+
+      if (destinationMode === "new") {
+        const candidateName =
+          customWorkspaceName.trim() ||
+          generatedJob.result.project?.title ||
+          prompt.trim().slice(0, 30) ||
+          "New Architecture";
+        const createdWs = await api.createWorkspace({
+          name: candidateName,
+          description: generatedJob.result.project?.description || "Synthesized architecture plan",
+        });
+        targetWsId = createdWs.id;
+        const updatedList = [createdWs, ...workspaces.filter((w) => w.id !== createdWs.id)];
+        setWorkspaces(updatedList);
+        setCurrentWorkspace(createdWs);
+      }
+
+      await api.confirmAiJob(generatedJob.id, generatedJob.result, targetWsId);
+      if (targetWsId) {
+        await loadWorkspaceData(targetWsId);
+      }
+
       setAiModalOpen(false);
       setGeneratedJob(null);
       setPrompt("");
+      setCustomWorkspaceName("");
       setActiveTab("universe");
-      window.location.reload();
     } catch (err) {
       console.error("Confirmation error:", err);
     } finally {
@@ -194,6 +230,67 @@ export function AiGeneratorModal() {
                   )}
                 </div>
 
+                {/* DESTINATION WORKSPACE SELECTION */}
+                <div className="pt-2 border-t border-[#16221f] space-y-2">
+                  <span className="text-[10px] font-mono uppercase tracking-widest text-[#6e807d] block">
+                    Destination Workspace
+                  </span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setDestinationMode("new")}
+                      className={`p-2 rounded-lg border text-left transition-colors flex flex-col justify-between ${
+                        destinationMode === "new"
+                          ? "bg-[#15221e] border-[#a7f3d0]/50 text-[#f1f5f4]"
+                          : "bg-[#0b1312] border-[#202e2b] text-[#9aaba8] hover:border-[#334641]"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className="text-xs font-semibold text-[#a7f3d0] flex items-center gap-1.5">
+                          <Plus className="h-3.5 w-3.5" /> New Workspace
+                        </span>
+                        {destinationMode === "new" && <Check className="h-3.5 w-3.5 text-[#a7f3d0]" />}
+                      </div>
+                      <span className="text-[10px] text-[#6e807d] mt-1 leading-snug">
+                        Dedicated workspace for this plan
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setDestinationMode("current")}
+                      className={`p-2 rounded-lg border text-left transition-colors flex flex-col justify-between ${
+                        destinationMode === "current"
+                          ? "bg-[#15221e] border-[#a7f3d0]/50 text-[#f1f5f4]"
+                          : "bg-[#0b1312] border-[#202e2b] text-[#9aaba8] hover:border-[#334641]"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className="text-xs font-semibold text-[#f1f5f4] flex items-center gap-1.5 truncate">
+                          <FolderGit2 className="h-3.5 w-3.5 text-[#9aaba8]" /> Current
+                        </span>
+                        {destinationMode === "current" && <Check className="h-3.5 w-3.5 text-[#a7f3d0]" />}
+                      </div>
+                      <span className="text-[10px] text-[#6e807d] mt-1 leading-snug truncate">
+                        Add to &ldquo;{currentWorkspace?.name || "Active"}&rdquo;
+                      </span>
+                    </button>
+                  </div>
+
+                  {destinationMode === "new" && (
+                    <div className="space-y-1 pt-1">
+                      <label className="text-[10px] font-mono text-[#9aaba8]">New Workspace Title:</label>
+                      <input
+                        type="text"
+                        value={customWorkspaceName}
+                        onChange={(e) => setCustomWorkspaceName(e.target.value)}
+                        placeholder="Workspace Title"
+                        className="w-full px-2.5 py-1.5 rounded bg-[#0b1312] border border-[#202e2b] focus:border-[#a7f3d0] text-xs text-[#f1f5f4] focus:outline-none"
+                      />
+                    </div>
+                  )}
+                </div>
+
                 <div className="flex items-center justify-between pt-3 border-t border-[#16221f]">
                   <button
                     type="button"
@@ -210,7 +307,11 @@ export function AiGeneratorModal() {
                     onClick={handleConfirm}
                     icon={<ArrowRight className="h-3.5 w-3.5" />}
                   >
-                    {isConfirming ? "Materializing..." : "Apply to Workspace"}
+                    {isConfirming
+                      ? "Materializing..."
+                      : destinationMode === "new"
+                      ? "Create & Apply Plan"
+                      : "Apply to Workspace"}
                   </GlassButton>
                 </div>
               </div>

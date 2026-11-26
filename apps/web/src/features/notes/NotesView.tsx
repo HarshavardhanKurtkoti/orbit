@@ -19,32 +19,53 @@ import { api } from "@/lib/api";
 import { GlassButton } from "@/components/ui/GlassButton";
 
 export function NotesView() {
-  const { currentWorkspace } = useWorkspaceStore();
-  const [notes, setNotes] = useState<any[]>([]);
-  const [selectedNote, setSelectedNote] = useState<any>(null);
+  const { currentWorkspace, notes: storeNotes, setNotes: setStoreNotes } = useWorkspaceStore();
+  const [notes, setNotes] = useState<any[]>(storeNotes);
+  const [selectedNote, setSelectedNote] = useState<any>(storeNotes[0] || null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
+  const [title, setTitle] = useState(storeNotes[0]?.title || "");
+  const [content, setContent] = useState(storeNotes[0]?.content || "");
   const [isSaved, setIsSaved] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    setNotes(storeNotes || []);
+    if (storeNotes && storeNotes.length > 0) {
+      if (!selectedNote || !storeNotes.some((n: any) => n.id === selectedNote.id)) {
+        setSelectedNote(storeNotes[0]);
+        setTitle(storeNotes[0].title);
+        setContent(storeNotes[0].content);
+      }
+    } else {
+      setSelectedNote(null);
+      setTitle("");
+      setContent("");
+    }
+  }, [storeNotes, selectedNote]);
 
   useEffect(() => {
     if (!currentWorkspace?.id) return;
     async function fetchNotes() {
       try {
         const data = await api.listNotes(currentWorkspace.id);
-        setNotes(data);
-        if (data.length > 0) {
-          setSelectedNote(data[0]);
-          setTitle(data[0].title);
-          setContent(data[0].content);
+        const safeData = data || [];
+        setNotes(safeData);
+        setStoreNotes(safeData);
+        if (safeData.length > 0) {
+          setSelectedNote(safeData[0]);
+          setTitle(safeData[0].title);
+          setContent(safeData[0].content);
+        } else {
+          setSelectedNote(null);
+          setTitle("");
+          setContent("");
         }
       } catch (err) {
         console.error("Notes load error:", err);
       }
     }
     fetchNotes();
-  }, [currentWorkspace?.id]);
+  }, [currentWorkspace?.id, setStoreNotes]);
 
   const handleSelectNote = (note: any) => {
     setSelectedNote(note);
@@ -91,7 +112,7 @@ export function NotesView() {
   };
 
   const insertFormatting = (prefix: string, suffix: string = "") => {
-    setContent((prev) => `${prev}\n${prefix}Text${suffix}`);
+    setContent((prev: string) => `${prev}\n${prefix}Text${suffix}`);
     setIsSaved(false);
   };
 

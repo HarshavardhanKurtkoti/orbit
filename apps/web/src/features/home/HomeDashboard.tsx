@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   Compass,
@@ -26,62 +27,49 @@ import { UniversePreview } from "./UniversePreview";
 import { ActivityChart } from "./ActivityChart";
 
 export function HomeDashboard() {
-  const { currentWorkspace, setActiveTab, setSelectedEntity, setAiModalOpen } = useWorkspaceStore();
-  const [projects, setProjects] = useState<any[]>([]);
-  const [tasks, setTasks] = useState<any[]>([]);
-  const [notes, setNotes] = useState<any[]>([]);
-  const [analytics, setAnalytics] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+  const {
+    currentWorkspace,
+    projects,
+    tasks,
+    notes,
+    analytics,
+    isDataLoaded,
+    isSyncing,
+    loadWorkspaceData,
+    updateTaskOptimistic,
+    setSelectedEntity,
+    setAiModalOpen,
+  } = useWorkspaceStore();
 
   useEffect(() => {
-    if (!currentWorkspace?.id) return;
-    async function loadData() {
-      try {
-        setLoading(true);
-        const [projData, taskData, noteData, analyticsData] = await Promise.all([
-          api.listProjects(currentWorkspace.id),
-          api.listTasks(currentWorkspace.id),
-          api.listNotes(currentWorkspace.id),
-          api.getAnalytics(currentWorkspace.id),
-        ]);
-        setProjects(projData);
-        setTasks(taskData);
-        setNotes(noteData);
-        setAnalytics(analyticsData);
-      } catch (err) {
-        console.error("Dashboard data load error:", err);
-      } finally {
-        setLoading(false);
-      }
+    if (currentWorkspace?.id && !isDataLoaded && !isSyncing) {
+      loadWorkspaceData(currentWorkspace.id);
     }
-    loadData();
-  }, [currentWorkspace?.id]);
+  }, [currentWorkspace?.id, isDataLoaded, isSyncing, loadWorkspaceData]);
 
   const toggleTask = async (task: any, e: React.MouseEvent) => {
     e.stopPropagation();
     const newStatus = task.status === "done" ? "todo" : "done";
 
-    // Doherty threshold: optimistic UI update (<100ms)
-    setTasks((prev) =>
-      prev.map((t) => (t.id === task.id ? { ...t, status: newStatus } : t))
-    );
+    // Instant optimistic update (Doherty threshold < 100ms)
+    updateTaskOptimistic(task.id, { status: newStatus });
 
     try {
       await api.updateTask(task.id, { status: newStatus });
     } catch {
       // Rollback on error
-      setTasks((prev) =>
-        prev.map((t) => (t.id === task.id ? { ...t, status: task.status } : t))
-      );
+      updateTaskOptimistic(task.id, { status: task.status });
     }
   };
 
-  const completedCount = tasks.filter((t) => t.status === "done").length;
-  const graphNodeCount = analytics?.graph_density_nodes ?? (projects.length + tasks.length + notes.length || 9);
+  const completedCount = tasks.filter((t: any) => t.status === "done").length;
+  const graphNodeCount =
+    analytics?.graph_density_nodes ?? (projects.length + tasks.length + notes.length || 9);
 
   return (
     <div className="h-full w-full overflow-y-auto px-4 py-6 md:p-8 space-y-6 max-w-7xl mx-auto">
-      {/* 1. EDITORIAL HERO SECTION (harshakurtkoti.in authority) */}
+      {/* 1. EDITORIAL HERO SECTION */}
       <div className="border border-[#202e2b] bg-[#101918] rounded-xl p-6 md:p-8 relative overflow-hidden">
         {/* Subtle background coordinate grid */}
         <div className="absolute inset-0 spatial-canvas-grid pointer-events-none opacity-20" />
@@ -121,7 +109,7 @@ export function HomeDashboard() {
               variant="secondary"
               size="md"
               icon={<Compass className="h-3.5 w-3.5" />}
-              onClick={() => setActiveTab("universe")}
+              onClick={() => router.push("/universe")}
             >
               Explore universe
             </GlassButton>
@@ -140,10 +128,10 @@ export function HomeDashboard() {
           <MetricCard
             title="Projects"
             value={projects.length}
-            subtitle={`${projects.filter((p) => p.status === "completed").length} delivered`}
+            subtitle={`${projects.filter((p: any) => p.status === "completed").length} delivered`}
             icon={<FolderGit2 className="h-4 w-4" />}
             accentColor="mint"
-            onClick={() => setActiveTab("tasks")}
+            onClick={() => router.push("/tasks")}
           />
         </motion.div>
 
@@ -154,8 +142,11 @@ export function HomeDashboard() {
             subtitle={`${completedCount} completed`}
             icon={<CheckSquare className="h-4 w-4" />}
             accentColor="cyan"
-            trend={{ value: `${tasks.length > 0 ? Math.round((completedCount / tasks.length) * 100) : 0}%`, positive: true }}
-            onClick={() => setActiveTab("tasks")}
+            trend={{
+              value: `${tasks.length > 0 ? Math.round((completedCount / tasks.length) * 100) : 0}%`,
+              positive: true,
+            }}
+            onClick={() => router.push("/tasks")}
           />
         </motion.div>
 
@@ -166,7 +157,7 @@ export function HomeDashboard() {
             subtitle={`${analytics?.graph_density_edges ?? 8} connections`}
             icon={<Layers className="h-4 w-4" />}
             accentColor="emerald"
-            onClick={() => setActiveTab("universe")}
+            onClick={() => router.push("/universe")}
           />
         </motion.div>
 
@@ -177,7 +168,7 @@ export function HomeDashboard() {
             subtitle="Specs & decisions"
             icon={<BookOpen className="h-4 w-4" />}
             accentColor="amber"
-            onClick={() => setActiveTab("notes")}
+            onClick={() => router.push("/notes")}
           />
         </motion.div>
       </motion.div>
@@ -198,7 +189,7 @@ export function HomeDashboard() {
                 </h3>
               </div>
               <button
-                onClick={() => setActiveTab("tasks")}
+                onClick={() => router.push("/tasks")}
                 className="text-[11px] font-mono text-[#9aaba8] hover:text-[#a7f3d0] flex items-center gap-1 transition-colors"
               >
                 <span>View all</span>
@@ -207,7 +198,7 @@ export function HomeDashboard() {
             </div>
 
             <div className="divide-y divide-[#16221f] mt-1">
-              {tasks.slice(0, 5).map((task) => {
+              {tasks.slice(0, 5).map((task: any) => {
                 const isDone = task.status === "done";
                 return (
                   <div
@@ -239,17 +230,19 @@ export function HomeDashboard() {
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-2 flex-shrink-0">
+                    <div className="flex items-center gap-2 text-[10px] font-mono text-[#6e807d] flex-shrink-0">
+                      <Clock className="h-3 w-3 text-[#6e807d]" />
+                      <span>{task.due_date || "Upcoming"}</span>
                       <span
-                        className={`text-[9px] font-mono uppercase px-1.5 py-0.2 rounded ${
+                        className={`px-1.5 py-0.2 rounded border uppercase text-[9px] ${
                           task.priority === "urgent"
-                            ? "text-[#f87171] bg-[#f87171]/10 border border-[#f87171]/20"
+                            ? "border-[#f87171]/30 text-[#f87171] bg-[#f87171]/10"
                             : task.priority === "high"
-                            ? "text-[#fbbf24] bg-[#fbbf24]/10 border border-[#fbbf24]/20"
-                            : "text-[#6e807d] bg-[#15221e]"
+                            ? "border-[#fbbf24]/30 text-[#fbbf24] bg-[#fbbf24]/10"
+                            : "border-[#202e2b] text-[#9aaba8] bg-[#15221e]"
                         }`}
                       >
-                        {task.priority || "medium"}
+                        {task.priority || "med"}
                       </span>
                     </div>
                   </div>
@@ -258,79 +251,82 @@ export function HomeDashboard() {
             </div>
           </div>
 
-          <div className="pt-3 border-t border-[#16221f] flex items-center justify-between text-[11px] font-mono text-[#6e807d]">
-            <span>{completedCount} of {tasks.length} tasks completed</span>
-            <span className="text-[#a7f3d0]">{tasks.length - completedCount} remaining</span>
+          <div className="pt-3 border-t border-[#16221f] flex items-center justify-between">
+            <span className="text-[11px] font-mono text-[#6e807d]">
+              {completedCount} of {tasks.length} tasks resolved
+            </span>
+            <button
+              onClick={() => router.push("/tasks")}
+              className="text-xs text-[#a7f3d0] hover:underline flex items-center gap-1 font-medium"
+            >
+              <Plus className="h-3 w-3" />
+              <span>Add task</span>
+            </button>
           </div>
         </GlassPanel>
       </div>
 
-      {/* 4. ACTIVITY & ROADMAP OVERVIEW */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ActivityChart tasks={tasks} />
+      {/* 4. ACTIVITY & VELOCITY VISUALIZER */}
+      <ActivityChart tasks={tasks} />
 
-        {/* Active Projects List */}
-        <GlassPanel elevation="standard" className="p-5 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between pb-3 border-b border-[#202e2b]">
-              <div className="flex items-center gap-2">
-                <FolderGit2 className="h-4 w-4 text-[#a7f3d0]" />
-                <h3 className="text-xs font-mono uppercase tracking-widest text-[#f1f5f4] font-medium">
-                  Active Projects
-                </h3>
+      {/* 5. ACTIVE PROJECTS SHOWCASE */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <FolderGit2 className="h-4 w-4 text-[#a7f3d0]" />
+            <h2 className="text-xs font-mono uppercase tracking-widest text-[#f1f5f4] font-medium">
+              Active Projects
+            </h2>
+          </div>
+          <button
+            onClick={() => router.push("/tasks")}
+            className="text-[11px] font-mono text-[#9aaba8] hover:text-[#a7f3d0] flex items-center gap-1 transition-colors"
+          >
+            <span>Roadmap overview</span>
+            <ArrowRight className="h-3 w-3" />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {projects.slice(0, 3).map((proj: any) => (
+            <GlassCard
+              key={proj.id}
+              elevation="subtle"
+              onClick={() =>
+                setSelectedEntity({
+                  type: "project",
+                  id: proj.id,
+                  data: proj,
+                })
+              }
+              className="p-4 space-y-3 border-[#202e2b] hover:border-[#334641] transition-colors"
+            >
+              <div className="flex items-start justify-between">
+                <span className="text-[10px] font-mono uppercase tracking-widest px-2 py-0.5 rounded bg-[#15221e] border border-[#202e2b] text-[#9aaba8]">
+                  {proj.status || "In Progress"}
+                </span>
+                <span className="text-xs font-mono text-[#a7f3d0] font-medium">
+                  {proj.progress ?? 50}%
+                </span>
               </div>
-              <button
-                onClick={() => setActiveTab("timeline")}
-                className="text-[11px] font-mono text-[#9aaba8] hover:text-[#a7f3d0] flex items-center gap-1 transition-colors"
-              >
-                <span>Roadmap</span>
-                <ArrowRight className="h-3 w-3" />
-              </button>
-            </div>
 
-            <div className="divide-y divide-[#16221f] mt-1">
-              {projects.slice(0, 4).map((proj) => {
-                const progress = proj.progress ?? 50;
-                return (
-                  <div
-                    key={proj.id}
-                    onClick={() =>
-                      setSelectedEntity({
-                        type: "project",
-                        id: proj.id,
-                        data: proj,
-                      })
-                    }
-                    className="py-2.5 flex items-center justify-between gap-3 group cursor-pointer hover:bg-[#15221e]/40 px-2 rounded-lg transition-colors"
-                  >
-                    <div className="min-w-0">
-                      <div className="text-xs font-medium text-[#f1f5f4] group-hover:text-[#a7f3d0] truncate transition-colors">
-                        {proj.title}
-                      </div>
-                      <div className="text-[10px] text-[#6e807d] font-mono truncate mt-0.5">
-                        {proj.description || "Project module"}
-                      </div>
-                    </div>
+              <div>
+                <h3 className="text-sm font-semibold text-[#f1f5f4] tracking-tight">{proj.title}</h3>
+                <p className="text-xs text-[#9aaba8] line-clamp-2 mt-1 leading-relaxed">
+                  {proj.description || "Synthesizing spatial project deliverables."}
+                </p>
+              </div>
 
-                    <div className="flex items-center gap-3 flex-shrink-0">
-                      <div className="w-16 h-1.5 rounded-full bg-[#16221f] overflow-hidden">
-                        <div className="h-full bg-[#a7f3d0] rounded-full" style={{ width: `${progress}%` }} />
-                      </div>
-                      <span className="text-[10px] font-mono text-[#9aaba8] w-7 text-right">
-                        {progress}%
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="pt-3 border-t border-[#16221f] flex items-center justify-between text-[11px] font-mono text-[#6e807d]">
-            <span>{projects.length} total projects</span>
-            <span className="text-[#34d399]">Operational</span>
-          </div>
-        </GlassPanel>
+              {/* Progress bar */}
+              <div className="h-1 w-full bg-[#16221f] rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-[#a7f3d0] rounded-full transition-all duration-500"
+                  style={{ width: `${proj.progress ?? 50}%` }}
+                />
+              </div>
+            </GlassCard>
+          ))}
+        </div>
       </div>
     </div>
   );

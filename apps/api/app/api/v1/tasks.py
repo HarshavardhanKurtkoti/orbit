@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.database import get_db
-from app.core.security import get_current_user
+from app.core.security import get_current_user, verify_workspace_access
 from app.models.user import User
 from app.models.task import Task
 from app.models.project import Project
@@ -21,6 +21,13 @@ async def list_tasks(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    if workspace_id:
+        await verify_workspace_access(workspace_id, current_user.id, db)
+    elif project_id:
+        proj = (await db.execute(select(Project).where(Project.id == project_id))).scalar_one_or_none()
+        if proj:
+            await verify_workspace_access(proj.workspace_id, current_user.id, db)
+
     query = select(Task)
     if project_id:
         query = query.where(Task.project_id == project_id)
@@ -44,6 +51,8 @@ async def create_task(
     project = project_result.scalar_one_or_none()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
+
+    await verify_workspace_access(project.workspace_id, current_user.id, db)
 
     task = Task(
         project_id=task_in.project_id,
