@@ -5,7 +5,7 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "apps", "api"))
 
 import httpx
-from app.main import app
+from app.main import app  # type: ignore[missing-import]
 
 async def main():
     print("Testing FastAPI app with Neon PostgreSQL...")
@@ -29,7 +29,7 @@ async def main():
         print(">> Prometheus metrics endpoint: VERIFIED!")
 
         # Test database read query via public endpoint or database directly
-        from app.core.database import engine
+        from app.core.database import engine  # type: ignore[missing-import]
         from sqlalchemy import text
         async with engine.connect() as conn:
             result = await conn.execute(text("SELECT current_database(), current_user, count(*)::int from information_schema.tables where table_schema = 'public'"))

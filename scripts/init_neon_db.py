@@ -5,9 +5,9 @@ import os
 # Add apps/api to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "apps", "api"))
 
-from app.core.database import engine
-from app.models.base import Base
-import app.models  # registers all models with Base.metadata
+from app.core.database import engine  # type: ignore[missing-import]
+from app.models.base import Base  # type: ignore[missing-import]
+import app.models  # type: ignore[missing-import]  # registers all models with Base.metadata
 from sqlalchemy import text
 
 async def init_tables():
