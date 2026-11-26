@@ -11,11 +11,24 @@ from app.models.task import Task
 from app.models.note import Note
 from app.models.goal import Goal
 from app.models.graph import GraphNode, GraphEdge
+from app.models.ai import AiGenerationJob
+from app.models.activity import ActivityEvent
 
 
 async def seed_data():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    max_retries = 15
+    retry_delay = 1.5
+    for attempt in range(1, max_retries + 1):
+        try:
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+            break
+        except (ConnectionRefusedError, OSError, Exception) as e:
+            if attempt == max_retries:
+                print(f"[seed] Failed to initialize database tables after {max_retries} attempts: {e}")
+                raise e
+            print(f"[seed] Database not ready yet ({type(e).__name__}: {e}). Retrying in {retry_delay}s ({attempt}/{max_retries})...")
+            await asyncio.sleep(retry_delay)
 
     async with AsyncSessionLocal() as session:
         # Check if already seeded
