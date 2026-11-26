@@ -8,7 +8,7 @@ export type GlassElevation = "subtle" | "standard" | "elevated";
 
 export interface GlassPanelProps extends React.HTMLAttributes<HTMLDivElement> {
   elevation?: GlassElevation;
-  glow?: "none" | "violet" | "cyan" | "emerald" | "aurora";
+  glow?: "none" | "violet" | "cyan" | "emerald" | "aurora" | "mint";
   hoverable?: boolean;
 }
 
@@ -22,10 +22,11 @@ export const GlassPanel = forwardRef<HTMLDivElement, GlassPanelProps>(
 
     const glowClass = {
       none: "",
-      violet: "glow-violet",
-      cyan: "glow-cyan",
-      emerald: "glow-emerald",
-      aurora: "glow-aurora",
+      violet: "",
+      cyan: "",
+      emerald: "shadow-mint-subtle border-[#34d399]/30",
+      aurora: "border-[#a7f3d0]/25 shadow-mint-subtle",
+      mint: "border-[#a7f3d0]/30 shadow-mint-subtle",
     }[glow];
 
     return (
@@ -33,10 +34,10 @@ export const GlassPanel = forwardRef<HTMLDivElement, GlassPanelProps>(
         ref={ref}
         className={twMerge(
           clsx(
-            "relative rounded-2xl transition-all duration-200",
+            "relative rounded-xl transition-all duration-200 border border-[#202e2b]",
             elevationClass,
             glowClass,
-            hoverable && "hover:border-white/20 hover:shadow-glass-lg hover:-translate-y-0.5",
+            hoverable && "hover:border-[#334641] hover:-translate-y-0.5",
             className
           )
         )}

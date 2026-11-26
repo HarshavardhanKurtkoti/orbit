@@ -1,83 +1,101 @@
 export const colors = {
+  canvas: '#080d10',
   background: {
-    base: '#070914',
-    surface: '#101426',
-    elevated: '#171B32',
-    overlay: 'rgba(7, 9, 20, 0.78)',
+    base: '#080d10',
+    surface: '#101918',
+    surfaceSubtle: '#0b1312',
+    elevated: '#15221e',
+    elevatedHover: '#1c2e29',
+    overlay: 'rgba(8, 13, 16, 0.85)',
   },
   accent: {
-    violet: '#9366FF',
-    violetHover: '#7C3AED',
-    blue: '#38BDF8',
-    cyan: '#22D3EE',
-    glowViolet: 'rgba(147, 102, 255, 0.25)',
-    glowCyan: 'rgba(34, 211, 238, 0.22)',
+    mint: '#a7f3d0',
+    mintHover: '#86efac',
+    mintSubtle: 'rgba(167, 243, 208, 0.08)',
+    mintBorder: 'rgba(167, 243, 208, 0.22)',
+    signal: '#34d399',
+    signalSubtle: 'rgba(52, 211, 153, 0.12)',
+    sky: '#38bdf8',
+    skySubtle: 'rgba(56, 189, 248, 0.12)',
+    amber: '#fbbf24',
+    amberSubtle: 'rgba(251, 191, 36, 0.12)',
+    rose: '#f87171',
+    roseSubtle: 'rgba(248, 113, 113, 0.12)',
   },
   text: {
-    primary: '#F8FAFC',
-    secondary: '#A1ABC4',
-    muted: '#626D8A',
-    inverse: '#070914',
+    primary: '#f1f5f4',
+    secondary: '#d6dedc',
+    muted: '#9aaba8',
+    quiet: '#6e807d',
+    inverse: '#080d10',
   },
   border: {
-    subtle: 'rgba(255, 255, 255, 0.07)',
-    medium: 'rgba(255, 255, 255, 0.12)',
-    highlight: 'rgba(255, 255, 255, 0.22)',
-    active: 'rgba(147, 102, 255, 0.55)',
+    line: '#202e2b',
+    hairline: '#16221f',
+    subtle: 'rgba(32, 46, 43, 0.6)',
+    highlight: 'rgba(255, 255, 255, 0.08)',
+    active: 'rgba(167, 243, 208, 0.35)',
   },
   glass: {
     subtle: {
-      bg: 'rgba(16, 20, 38, 0.55)',
-      border: 'rgba(255, 255, 255, 0.08)',
+      bg: 'rgba(16, 25, 24, 0.55)',
+      border: '#16221f',
       blur: '12px',
-      highlight: 'rgba(255, 255, 255, 0.06)',
+      highlight: 'rgba(255, 255, 255, 0.04)',
     },
     standard: {
-      bg: 'rgba(16, 20, 38, 0.72)',
-      border: 'rgba(255, 255, 255, 0.12)',
-      blur: '20px',
-      highlight: 'rgba(255, 255, 255, 0.10)',
+      bg: 'rgba(16, 25, 24, 0.75)',
+      border: '#202e2b',
+      blur: '18px',
+      highlight: 'rgba(255, 255, 255, 0.06)',
     },
     elevated: {
-      bg: 'rgba(23, 27, 50, 0.85)',
-      border: 'rgba(255, 255, 255, 0.18)',
-      blur: '28px',
-      highlight: 'rgba(255, 255, 255, 0.16)',
+      bg: 'rgba(21, 34, 30, 0.88)',
+      border: '#2a3d38',
+      blur: '24px',
+      highlight: 'rgba(255, 255, 255, 0.09)',
     },
   },
   status: {
-    success: '#34D399',
-    warning: '#FBBF24',
-    error: '#FB7185',
-    info: '#38BDF8',
+    success: '#34d399',
+    warning: '#fbbf24',
+    error: '#f87171',
+    info: '#38bdf8',
+  },
+  node: {
+    project: '#a7f3d0',
+    task: '#38bdf8',
+    note: '#fbbf24',
+    goal: '#34d399',
   },
 } as const;
 
 export const typography = {
   fontFamily: {
-    sans: 'var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-    mono: 'var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+    sans: 'var(--font-geist-sans), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    mono: 'var(--font-geist-mono), "JetBrains Mono", Consolas, monospace',
+    serif: 'Georgia, Cambria, "Times New Roman", Times, serif',
   },
   fontSize: {
-    xs: '0.75rem',    // 12px
-    sm: '0.875rem',   // 14px
-    base: '1rem',     // 16px
-    lg: '1.125rem',   // 18px
-    xl: '1.25rem',    // 20px
-    '2xl': '1.5rem',  // 24px
-    '3xl': '1.875rem',// 30px
-    '4xl': '2.25rem', // 36px
+    xs: '0.75rem',     // 12px
+    sm: '0.875rem',    // 14px
+    base: '1rem',      // 16px
+    lg: '1.125rem',    // 18px
+    xl: '1.25rem',     // 20px
+    '2xl': '1.5rem',   // 24px
+    '3xl': '1.875rem', // 30px
+    '4xl': '2.25rem',  // 36px
   },
 } as const;
 
 export const motionTokens = {
   duration: {
     instant: 0,
-    press: 90,        // 80-150ms (Principle 8)
-    hover: 120,       // 100-150ms
-    fastClose: 130,   // Fast closing (Principle 18)
-    normal: 220,      // Standard UI transitions (150-300ms)
-    panel: 280,       // Large panels / sheets (250-400ms)
+    press: 90,           // 80-150ms (Principle 8: Snappy timing)
+    hover: 120,          // 100-150ms
+    fastClose: 130,      // Fast closing (Principle 18)
+    normal: 220,         // Standard UI transitions (150-300ms)
+    panel: 280,          // Large panels / sheets (250-400ms)
     staggerCascade: 280, // Max list cascade (Principle 3)
   },
   easing: {
@@ -89,7 +107,7 @@ export const motionTokens = {
   spring: {
     snappy: { stiffness: 400, damping: 28, mass: 0.8 },
     gentle: { stiffness: 200, damping: 24, mass: 1 },
-    bouncy: { stiffness: 350, damping: 18, mass: 1 }, // Follow-through (Principle 4)
+    bouncy: { stiffness: 350, damping: 18, mass: 1 },     // Follow-through (Principle 4)
     settling: { stiffness: 280, damping: 22, mass: 0.9 }, // Canvas node drop
   },
 } as const;
@@ -113,6 +131,5 @@ export const radius = {
   lg: '0.75rem',  // 12px
   xl: '1rem',     // 16px
   '2xl': '1.25rem', // 20px
-  '3xl': '1.5rem', // 24px
   full: '9999px',
 } as const;

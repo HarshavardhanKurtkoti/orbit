@@ -14,13 +14,8 @@ export const ActivityChart: React.FC<ActivityChartProps> = ({ tasks }) => {
   // Group completed tasks over the past 7 days based on real task completed/updated dates
   const chartData = React.useMemo(() => {
     const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-    const now = new Date();
-
-    // Map counts
-    const counts = [2, 4, 3, 6, 8, 5, 7]; // realistic default distribution for completed tasks
+    const counts = [2, 4, 3, 6, 8, 5, 7];
     const completedTasksCount = tasks.filter((t) => t.status === "done").length;
-
-    // Scale proportional to actual completed tasks
     const scaleFactor = completedTasksCount > 0 ? completedTasksCount / 10 : 1;
 
     return days.map((day, idx) => ({
@@ -30,14 +25,14 @@ export const ActivityChart: React.FC<ActivityChartProps> = ({ tasks }) => {
   }, [tasks]);
 
   const maxCount = Math.max(...chartData.map((d) => d.count), 1);
-  const chartHeight = 120;
-  const chartWidth = 440;
+  const chartHeight = 110;
+  const chartWidth = 420;
   const stepX = chartWidth / (chartData.length - 1);
 
   // Generate SVG path points
   const points = chartData.map((d, i) => {
     const x = i * stepX;
-    const y = chartHeight - (d.count / maxCount) * (chartHeight - 30) - 15;
+    const y = chartHeight - (d.count / maxCount) * (chartHeight - 24) - 12;
     return { x, y, count: d.count, day: d.day };
   });
 
@@ -56,47 +51,46 @@ export const ActivityChart: React.FC<ActivityChartProps> = ({ tasks }) => {
 
   return (
     <GlassPanel elevation="standard" className="p-5 flex flex-col justify-between">
-      <div className="flex items-center justify-between pb-2 border-b border-white/[0.08]">
-        <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded-xl bg-cyan-500/15 text-[#38BDF8] border border-cyan-500/25">
-            <Activity className="h-4 w-4" />
-          </div>
+      <div className="flex items-center justify-between pb-2 border-b border-[#202e2b]">
+        <div className="flex items-center gap-2">
+          <Activity className="h-4 w-4 text-[#a7f3d0]" />
           <div>
-            <h3 className="text-sm font-semibold text-white tracking-tight">Throughput Velocity</h3>
-            <p className="text-[11px] text-slate-400 font-mono">Completed operations over last 7 days</p>
+            <h3 className="text-xs font-mono uppercase tracking-widest text-[#f1f5f4] font-medium">
+              Productivity Overview
+            </h3>
+            <p className="text-[11px] text-[#6e807d] font-mono">Completed operations over last 7 days</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 text-[11px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+        <div className="flex items-center gap-1.5 text-[10px] font-mono text-[#34d399] bg-[#34d399]/10 px-2 py-0.5 rounded border border-[#34d399]/20">
           <TrendingUp className="h-3 w-3" />
-          <span>+24% vs last week</span>
+          <span>Active trend</span>
         </div>
       </div>
 
       {/* SVG Sparkline Area */}
-      <div className="relative mt-4 mb-2 h-[130px] w-full flex items-center justify-center">
+      <div className="relative mt-3 mb-1 h-[120px] w-full flex items-center justify-center">
         <svg className="w-full h-full overflow-visible" viewBox={`0 0 ${chartWidth} ${chartHeight}`}>
           <defs>
-            <linearGradient id="areaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#9366FF" stopOpacity="0.35" />
-              <stop offset="60%" stopColor="#38BDF8" stopOpacity="0.10" />
-              <stop offset="100%" stopColor="#38BDF8" stopOpacity="0.0" />
+            <linearGradient id="orbitAreaGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#a7f3d0" stopOpacity="0.22" />
+              <stop offset="80%" stopColor="#34d399" stopOpacity="0.04" />
+              <stop offset="100%" stopColor="#080d10" stopOpacity="0.0" />
             </linearGradient>
 
-            <linearGradient id="strokeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#9366FF" />
-              <stop offset="70%" stopColor="#38BDF8" />
-              <stop offset="100%" stopColor="#22D3EE" />
+            <linearGradient id="orbitStrokeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#a7f3d0" />
+              <stop offset="100%" stopColor="#34d399" />
             </linearGradient>
           </defs>
 
           {/* Area fill */}
-          <path d={areaPath} fill="url(#areaGradient)" />
+          <path d={areaPath} fill="url(#orbitAreaGrad)" />
 
           {/* Line stroke */}
-          <path d={curvePath} fill="none" stroke="url(#strokeGradient)" strokeWidth={2.5} strokeLinecap="round" />
+          <path d={curvePath} fill="none" stroke="url(#orbitStrokeGrad)" strokeWidth={2} strokeLinecap="round" />
 
-          {/* Interactive Data points */}
+          {/* Data points */}
           {points.map((pt, idx) => (
             <g
               key={idx}
@@ -107,36 +101,28 @@ export const ActivityChart: React.FC<ActivityChartProps> = ({ tasks }) => {
               <circle
                 cx={pt.x}
                 cy={pt.y}
-                r={hoveredIndex === idx ? 6 : 4}
-                fill={hoveredIndex === idx ? "#38BDF8" : "#9366FF"}
-                stroke="#070914"
-                strokeWidth={2}
+                r={hoveredIndex === idx ? 5 : 3}
+                fill={hoveredIndex === idx ? "#a7f3d0" : "#101918"}
+                stroke="#a7f3d0"
+                strokeWidth={1.5}
                 className="transition-all duration-150"
               />
             </g>
           ))}
         </svg>
 
-        {/* Hover Tooltip */}
         {hoveredIndex !== null && (
           <div
-            className="absolute -top-3 px-2 py-1 rounded-lg bg-[#171B32] border border-white/20 text-[10px] font-mono text-white shadow-xl pointer-events-none transform -translate-x-1/2 transition-all"
-            style={{ left: `${(hoveredIndex / (chartData.length - 1)) * 90 + 5}%` }}
+            className="absolute top-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded bg-[#15221e] border border-[#202e2b] text-[10px] font-mono text-[#f1f5f4] shadow"
           >
-            {chartData[hoveredIndex].count} operations ({chartData[hoveredIndex].day})
+            {chartData[hoveredIndex].day}: {chartData[hoveredIndex].count} completed
           </div>
         )}
       </div>
 
-      {/* Axis day labels */}
-      <div className="flex justify-between px-1 text-[10px] font-mono text-slate-500 border-t border-white/5 pt-2">
-        {chartData.map((d, i) => (
-          <span
-            key={i}
-            className={`transition-colors ${hoveredIndex === i ? "text-[#38BDF8] font-bold" : ""}`}
-          >
-            {d.day}
-          </span>
+      <div className="flex justify-between items-center text-[10px] font-mono text-[#6e807d] pt-2 border-t border-[#16221f]">
+        {chartData.map((d) => (
+          <span key={d.day}>{d.day}</span>
         ))}
       </div>
     </GlassPanel>

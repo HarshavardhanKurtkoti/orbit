@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Orbit, Sparkles, Plus } from "lucide-react";
+import { Compass, Sparkles, Plus } from "lucide-react";
 import { GlassPanel } from "./GlassPanel";
 import { GlassButton } from "./GlassButton";
 
@@ -27,29 +27,26 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   return (
     <GlassPanel
       elevation="standard"
-      className="p-8 md:p-12 text-center flex flex-col items-center justify-center max-w-lg mx-auto border-white/10"
+      className="p-8 md:p-10 text-center flex flex-col items-center justify-center max-w-md mx-auto border-[#202e2b] rounded-xl"
     >
-      <div className="relative mb-5">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#9366FF]/20 to-[#38BDF8]/20 border border-white/15 flex items-center justify-center shadow-glow-violet">
-          {icon || <Orbit className="h-8 w-8 text-[#9366FF] animate-[spin_30s_linear_infinite]" />}
-        </div>
-        <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-[#38BDF8]/20 border border-[#38BDF8]/40 flex items-center justify-center text-[#38BDF8]">
-          <Sparkles className="h-3 w-3" />
+      <div className="mb-4">
+        <div className="w-12 h-12 rounded-xl bg-[#15221e] border border-[#202e2b] flex items-center justify-center text-[#a7f3d0]">
+          {icon || <Compass className="h-6 w-6" />}
         </div>
       </div>
 
-      <h3 className="text-base font-semibold text-white tracking-tight">{title}</h3>
-      <p className="text-xs text-slate-400 mt-2 max-w-sm leading-relaxed">{description}</p>
+      <h3 className="text-sm font-semibold text-[#f1f5f4] tracking-tight">{title}</h3>
+      <p className="text-xs text-[#9aaba8] mt-1.5 max-w-sm leading-relaxed">{description}</p>
 
       {(actionLabel || secondaryActionLabel) && (
-        <div className="flex items-center gap-3 mt-6 flex-wrap justify-center">
+        <div className="flex items-center gap-2.5 mt-5 flex-wrap justify-center">
           {actionLabel && onAction && (
-            <GlassButton variant="primary" size="md" onClick={onAction} icon={<Plus className="h-3.5 w-3.5" />}>
+            <GlassButton variant="primary" size="sm" onClick={onAction} icon={<Plus className="h-3.5 w-3.5" />}>
               {actionLabel}
             </GlassButton>
           )}
           {secondaryActionLabel && onSecondaryAction && (
-            <GlassButton variant="subtle" size="md" onClick={onSecondaryAction}>
+            <GlassButton variant="subtle" size="sm" onClick={onSecondaryAction}>
               {secondaryActionLabel}
             </GlassButton>
           )}

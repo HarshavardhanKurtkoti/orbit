@@ -29,11 +29,10 @@ import {
   BookOpen,
   Target,
   Sparkles,
-  Orbit,
   RefreshCw,
-  Plus,
   Compass,
   AlertCircle,
+  Filter,
 } from "lucide-react";
 import { GlassPanel } from "@/components/ui/GlassPanel";
 import { GlassButton } from "@/components/ui/GlassButton";
@@ -49,6 +48,8 @@ export function UniverseCanvas({ viewMode = "spatial" }: UniverseCanvasProps) {
   const [edges, setEdges] = useState<Edge[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [filterType, setFilterType] = useState<string>("all");
+  const [isInteractive, setIsInteractive] = useState(true);
 
   const nodeTypes = useMemo(
     () => ({
@@ -66,7 +67,6 @@ export function UniverseCanvas({ viewMode = "spatial" }: UniverseCanvasProps) {
       setLoading(true);
       setError(null);
       const graph = await api.getGraph(wsId);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const mappedNodes: Node[] = (graph.nodes || []).map((n: any) => ({
         id: n.id,
         type: n.entity_type,
@@ -82,16 +82,15 @@ export function UniverseCanvas({ viewMode = "spatial" }: UniverseCanvasProps) {
         },
       }));
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const mappedEdges: Edge[] = (graph.edges || []).map((e: any) => ({
         id: e.id,
         source: e.source_node_id,
         target: e.target_node_id,
         animated: e.relationship_type === "depends_on",
         style: {
-          stroke: e.relationship_type === "depends_on" ? "#9366FF" : "#38BDF8",
-          strokeWidth: 2,
-          opacity: 0.7,
+          stroke: e.relationship_type === "depends_on" ? "#a7f3d0" : "#2a3d38",
+          strokeWidth: 1.5,
+          opacity: 0.85,
         },
       }));
 
@@ -99,7 +98,7 @@ export function UniverseCanvas({ viewMode = "spatial" }: UniverseCanvasProps) {
       setEdges(mappedEdges);
     } catch (err: any) {
       console.error("Failed to load universe graph:", err);
-      setError("Unable to synchronize spatial coordinates with the orbit kernel.");
+      setError("Unable to synchronize coordinates with the workspace API.");
     } finally {
       setLoading(false);
     }
@@ -138,7 +137,6 @@ export function UniverseCanvas({ viewMode = "spatial" }: UniverseCanvasProps) {
     [currentWorkspace?.id]
   );
 
-  // Debounced node drag persistence (Principle 16: Doherty threshold & reliability)
   const onNodeDragStop = useCallback(
     async (_event: unknown, node: Node) => {
       const wsId = currentWorkspace?.id || "ws_prime";
@@ -157,27 +155,25 @@ export function UniverseCanvas({ viewMode = "spatial" }: UniverseCanvasProps) {
     [currentWorkspace?.id]
   );
 
-  // 1. Sleek Glass Loading State (Eliminates indefinite "LOADING SPATIAL COORDINATES...")
+  const displayedNodes = useMemo(() => {
+    if (filterType === "all") return nodes;
+    return nodes.filter((n) => n.type === filterType);
+  }, [nodes, filterType]);
+
+  // Loading State
   if (loading) {
     return (
-      <div className="h-full w-full flex flex-col items-center justify-center p-6 bg-[#070914] relative overflow-hidden">
-        {/* Ambient Aurora behind loader */}
-        <div className="w-80 h-80 rounded-full bg-[#9366FF]/20 blur-3xl pointer-events-none" />
-
-        <GlassPanel elevation="elevated" className="p-8 flex flex-col items-center gap-4 text-center max-w-sm z-10">
-          <div className="relative">
-            <div className="h-14 w-14 rounded-2xl bg-gradient-to-tr from-[#9366FF] to-[#38BDF8] flex items-center justify-center shadow-glow-violet">
-              <Orbit className="h-8 w-8 text-white animate-spin" style={{ animationDuration: "12s" }} />
-            </div>
-            <div className="absolute -inset-1 rounded-2xl bg-[#9366FF]/30 blur-sm -z-10 animate-pulse" />
+      <div className="h-full w-full flex flex-col items-center justify-center p-6 bg-[#080d10] relative">
+        <GlassPanel elevation="elevated" className="p-6 flex flex-col items-center gap-3 text-center max-w-xs border-[#202e2b]">
+          <div className="h-10 w-10 rounded-xl bg-[#15221e] border border-[#202e2b] flex items-center justify-center text-[#a7f3d0]">
+            <Compass className="h-5 w-5 animate-spin" style={{ animationDuration: "8s" }} />
           </div>
-
           <div>
-            <h3 className="text-sm font-semibold text-white tracking-wide">
-              SYNCHRONIZING SPATIAL MESH
+            <h3 className="text-xs font-mono uppercase tracking-widest text-[#f1f5f4] font-medium">
+              Loading Workspace Graph
             </h3>
-            <p className="text-[11px] text-slate-400 font-mono mt-1">
-              Calibrating 60 FPS force-directed coordinates...
+            <p className="text-[11px] text-[#6e807d] font-mono mt-0.5">
+              Calibrating spatial coordinates...
             </p>
           </div>
         </GlassPanel>
@@ -185,43 +181,43 @@ export function UniverseCanvas({ viewMode = "spatial" }: UniverseCanvasProps) {
     );
   }
 
-  // 2. Error Recovery State
+  // Error State
   if (error) {
     return (
-      <div className="h-full w-full flex items-center justify-center p-6 bg-[#070914]">
-        <GlassPanel elevation="elevated" className="p-8 max-w-md text-center flex flex-col items-center gap-4 border-rose-500/30">
-          <div className="p-3 rounded-2xl bg-rose-500/20 text-rose-400 border border-rose-500/30">
-            <AlertCircle className="h-6 w-6" />
+      <div className="h-full w-full flex items-center justify-center p-6 bg-[#080d10]">
+        <GlassPanel elevation="elevated" className="p-6 max-w-sm text-center flex flex-col items-center gap-3 border-[#f87171]/30">
+          <div className="p-2.5 rounded-xl bg-[#f87171]/10 text-[#f87171] border border-[#f87171]/20">
+            <AlertCircle className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="text-base font-semibold text-white">Spatial Connection Interrupted</h3>
-            <p className="text-xs text-slate-400 mt-1 leading-relaxed">{error}</p>
+            <h3 className="text-sm font-semibold text-[#f1f5f4]">Connection Interrupted</h3>
+            <p className="text-xs text-[#9aaba8] mt-1">{error}</p>
           </div>
           <GlassButton
             variant="primary"
-            size="md"
-            icon={<RefreshCw className="h-3.5 w-3.5" />}
+            size="sm"
+            icon={<RefreshCw className="h-3 w-3" />}
             onClick={fetchGraph}
           >
-            Retry Connection
+            Retry
           </GlassButton>
         </GlassPanel>
       </div>
     );
   }
 
-  // 3. Accessible Tree View Alternative (WCAG 2.2 AA)
+  // Accessible Tree View Alternative (WCAG 2.2 AA)
   if (viewMode === "tree") {
     return (
-      <div className="h-full w-full overflow-y-auto p-6 md:p-10 space-y-6 max-w-4xl mx-auto">
-        <div className="flex items-center justify-between pb-4 border-b border-white/[0.08]">
+      <div className="h-full w-full overflow-y-auto p-6 md:p-8 space-y-5 max-w-4xl mx-auto">
+        <div className="flex items-center justify-between pb-3 border-b border-[#202e2b]">
           <div>
-            <h1 className="text-xl font-bold text-white flex items-center gap-2.5">
-              <Compass className="h-5 w-5 text-[#9366FF]" />
-              Universe Spatial Hierarchy (Tree View)
+            <h1 className="text-lg font-semibold text-[#f1f5f4] flex items-center gap-2">
+              <Compass className="h-4 w-4 text-[#a7f3d0]" />
+              Spatial Entity Hierarchy (Tree View)
             </h1>
-            <p className="text-xs text-slate-400 mt-1">
-              Accessible semantic structure of all connected workspace coordinates.
+            <p className="text-xs text-[#9aaba8] mt-0.5 font-mono">
+              Semantic list of all workspace entities and dependencies.
             </p>
           </div>
 
@@ -231,19 +227,19 @@ export function UniverseCanvas({ viewMode = "spatial" }: UniverseCanvasProps) {
             icon={<Sparkles className="h-3.5 w-3.5" />}
             onClick={() => setAiModalOpen(true)}
           >
-            Generate Nodes
+            Plan project
           </GlassButton>
         </div>
 
         {nodes.length === 0 ? (
           <EmptyState
-            title="Empty Spatial Universe"
-            description="No entities are currently projected into this workspace coordinate frame."
-            actionLabel="Generate Blueprint"
+            title="Empty Knowledge Graph"
+            description="No entities are currently projected into this workspace."
+            actionLabel="Plan with AI"
             onAction={() => setAiModalOpen(true)}
           />
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {nodes.map((node) => {
               const isGoal = node.type === "goal";
               const isProject = node.type === "project";
@@ -251,12 +247,12 @@ export function UniverseCanvas({ viewMode = "spatial" }: UniverseCanvasProps) {
               const isNote = node.type === "note";
 
               const badgeColor = isGoal
-                ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/30"
+                ? "text-[#34d399] bg-[#34d399]/10 border-[#34d399]/30"
                 : isProject
-                ? "text-purple-300 bg-purple-500/10 border-purple-500/30"
+                ? "text-[#a7f3d0] bg-[#a7f3d0]/10 border-[#a7f3d0]/30"
                 : isTask
-                ? "text-sky-300 bg-sky-500/10 border-sky-500/30"
-                : "text-amber-300 bg-amber-500/10 border-amber-500/30";
+                ? "text-[#38bdf8] bg-[#38bdf8]/10 border-[#38bdf8]/30"
+                : "text-[#fbbf24] bg-[#fbbf24]/10 border-[#fbbf24]/30";
 
               return (
                 <div
@@ -268,29 +264,29 @@ export function UniverseCanvas({ viewMode = "spatial" }: UniverseCanvasProps) {
                       data: node.data,
                     })
                   }
-                  className="p-4 rounded-2xl glass-standard hover:border-[#9366FF]/40 cursor-pointer transition-all flex items-center justify-between group"
+                  className="p-3.5 rounded-xl glass-standard hover:border-[#a7f3d0]/40 cursor-pointer transition-all flex items-center justify-between group bg-[#101918]"
                 >
-                  <div className="flex items-center gap-3.5">
-                    <div className="p-2.5 rounded-xl bg-white/[0.04] border border-white/10 group-hover:bg-white/[0.08] transition-colors">
-                      {isGoal && <Target className="h-5 w-5 text-emerald-400" />}
-                      {isProject && <FolderGit2 className="h-5 w-5 text-[#9366FF]" />}
-                      {isTask && <CheckSquare className="h-5 w-5 text-[#38BDF8]" />}
-                      {isNote && <BookOpen className="h-5 w-5 text-amber-400" />}
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-[#15221e] border border-[#202e2b]">
+                      {isGoal && <Target className="h-4 w-4 text-[#34d399]" />}
+                      {isProject && <FolderGit2 className="h-4 w-4 text-[#a7f3d0]" />}
+                      {isTask && <CheckSquare className="h-4 w-4 text-[#38bdf8]" />}
+                      {isNote && <BookOpen className="h-4 w-4 text-[#fbbf24]" />}
                     </div>
                     <div>
-                      <span className={`text-[9px] font-mono uppercase px-2 py-0.5 rounded-full border ${badgeColor}`}>
+                      <span className={`text-[9px] font-mono uppercase px-1.5 py-0.2 rounded border ${badgeColor}`}>
                         {node.type}
                       </span>
-                      <div className="text-sm font-semibold text-white mt-1 group-hover:text-purple-200 transition-colors">
-                        {(node.data as any).title || "Untitled Coordinate"}
+                      <div className="text-xs font-semibold text-[#f1f5f4] mt-0.5 group-hover:text-[#a7f3d0] transition-colors">
+                        {(node.data as any).title || "Untitled Entity"}
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-4 text-xs font-mono text-slate-400">
+                  <div className="flex items-center gap-3 text-xs font-mono text-[#9aaba8]">
                     <span className="capitalize">{(node.data as any).priority || "medium"}</span>
                     {(node.data as any).progress !== undefined && (
-                      <span className="text-white font-medium">{(node.data as any).progress}%</span>
+                      <span className="text-[#f1f5f4] font-medium">{(node.data as any).progress}%</span>
                     )}
                   </div>
                 </div>
@@ -302,75 +298,99 @@ export function UniverseCanvas({ viewMode = "spatial" }: UniverseCanvasProps) {
     );
   }
 
-  // 4. Empty Canvas Fallback
+  // Empty Fallback
   if (nodes.length === 0) {
     return (
-      <div className="h-full w-full flex items-center justify-center p-6 bg-[#070914] relative">
+      <div className="h-full w-full flex items-center justify-center p-6 bg-[#080d10] relative">
         <EmptyState
-          title="Empty Spatial Mesh"
-          description="Your spatial coordinates have not yet been materialized. Create your first project or let the AI Architect synthesize a complete cosmic roadmap."
-          actionLabel="Generate with AI"
+          title="Empty Knowledge Graph"
+          description="Your coordinates have not yet been materialized. Create your first project or let the AI Architect plan your workspace."
+          actionLabel="Plan with AI"
           onAction={() => setAiModalOpen(true)}
-          secondaryActionLabel="Refresh Canvas"
+          secondaryActionLabel="Refresh"
           onSecondaryAction={fetchGraph}
         />
       </div>
     );
   }
 
-  // 5. Signature Spatial Canvas with React Flow
+  // Signature Spatial Canvas with React Flow (Systems in Motion aesthetic)
   return (
-    <div className="h-full w-full bg-[#070914] relative select-none overflow-hidden">
-      {/* Background ambient lighting */}
-      <div className="absolute top-1/4 left-1/3 w-96 h-96 rounded-full bg-[#9366FF]/10 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full bg-[#38BDF8]/10 blur-[120px] pointer-events-none" />
-
+    <div className="h-full w-full bg-[#080d10] relative select-none overflow-hidden">
       {/* Floating Canvas Header Overlay */}
-      <div className="absolute top-4 left-6 z-10 pointer-events-none flex items-center gap-3">
-        <div className="px-3 py-1.5 rounded-xl glass-subtle text-xs font-mono text-slate-300 pointer-events-auto border-white/10 shadow-glass-sm flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span>{nodes.length} Spatial Nodes</span>
-          <span className="text-slate-600">•</span>
-          <span>{edges.length} Dependencies</span>
+      <div className="absolute top-3 left-4 z-10 pointer-events-none flex items-center gap-2.5">
+        <div className="px-3 py-1.5 rounded-lg glass-standard text-xs font-mono text-[#d6dedc] pointer-events-auto border-[#202e2b] shadow-sm flex items-center gap-2 bg-[#101918]/90">
+          <span className={`w-1.5 h-1.5 rounded-full ${isInteractive ? "bg-[#34d399]" : "bg-[#f87171]"}`} />
+          <span>{isInteractive ? "Interactive" : "Locked"}</span>
+          <span className="text-[#6e807d]">•</span>
+          <span>{nodes.length} Nodes</span>
+          <span className="text-[#6e807d]">•</span>
+          <span>{edges.length} Edges</span>
+        </div>
+
+        {/* Filter chips */}
+        <div className="hidden sm:flex items-center rounded-lg bg-[#101918]/90 border border-[#202e2b] p-0.5 pointer-events-auto text-[10px] font-mono">
+          {["all", "project", "task", "note"].map((t) => (
+            <button
+              key={t}
+              onClick={() => setFilterType(t)}
+              className={`px-2 py-0.5 rounded capitalize transition-colors ${
+                filterType === t
+                  ? "bg-[#15221e] text-[#a7f3d0] font-medium"
+                  : "text-[#9aaba8] hover:text-[#f1f5f4]"
+              }`}
+            >
+              {t === "all" ? "All" : `${t}s`}
+            </button>
+          ))}
         </div>
       </div>
 
       <ReactFlow
-        nodes={nodes}
+        nodes={displayedNodes}
         edges={edges}
         nodeTypes={nodeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onNodeDragStop={onNodeDragStop}
+        nodesDraggable={isInteractive}
+        nodesConnectable={isInteractive}
+        elementsSelectable={isInteractive}
+        panOnDrag={isInteractive}
+        zoomOnScroll={isInteractive}
+        zoomOnPinch={isInteractive}
+        zoomOnDoubleClick={isInteractive}
+        panOnScroll={isInteractive}
         fitView
-        className="spatial-canvas-grid"
+        className={`spatial-canvas-grid ${!isInteractive ? "!cursor-default [&_.react-flow__pane]:!cursor-default" : ""}`}
         minZoom={0.2}
         maxZoom={2.5}
         defaultEdgeOptions={{
           animated: true,
-          style: { stroke: "#9366FF", strokeWidth: 2, opacity: 0.7 },
+          style: { stroke: "#334641", strokeWidth: 1.5, opacity: 0.8 },
         }}
       >
-        <Background variant={BackgroundVariant.Dots} gap={28} size={1.2} color="rgba(255, 255, 255, 0.08)" />
+        <Background variant={BackgroundVariant.Dots} gap={24} size={1} color="#202e2b" />
 
         {/* Custom Glass Controls */}
         <Controls
-          className="!bg-[#101426]/90 !border-white/15 !rounded-2xl !p-1.5 !shadow-2xl backdrop-blur-xl [&>button]:!bg-white/5 [&>button]:!border-white/10 [&>button]:!text-slate-200 hover:[&>button]:!bg-[#9366FF]/30 hover:[&>button]:!text-white !fill-current"
+          onInteractiveChange={(interactiveStatus) => setIsInteractive(interactiveStatus)}
+          className="!bg-[#101918]/90 !border-[#202e2b] !rounded-xl !p-1 !shadow-lg backdrop-blur-md [&>button]:!bg-[#15221e] [&>button]:!border-[#202e2b] [&>button]:!text-[#d6dedc] hover:[&>button]:!bg-[#1c2e29] hover:[&>button]:!text-[#a7f3d0] !fill-current"
           position="bottom-left"
         />
 
         {/* Custom Glass Minimap */}
         <MiniMap
           nodeColor={(n) => {
-            if (n.type === "goal") return "#34D399";
-            if (n.type === "project") return "#9366FF";
-            if (n.type === "task") return "#38BDF8";
-            return "#FBBF24";
+            if (n.type === "goal") return "#34d399";
+            if (n.type === "project") return "#a7f3d0";
+            if (n.type === "task") return "#38bdf8";
+            return "#fbbf24";
           }}
-          className="!bg-[#101426]/90 !border-white/15 !rounded-2xl !shadow-2xl backdrop-blur-xl"
+          className="!bg-[#101918]/90 !border-[#202e2b] !rounded-xl !shadow-lg backdrop-blur-md"
           position="bottom-right"
-          maskColor="rgba(7, 9, 20, 0.85)"
+          maskColor="rgba(8, 13, 16, 0.85)"
         />
       </ReactFlow>
     </div>
