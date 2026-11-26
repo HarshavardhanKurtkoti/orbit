@@ -10,14 +10,9 @@ import {
   CalendarDays,
   BarChart3,
   Sparkles,
-  Command,
   Search,
-  Bell,
-  ChevronDown,
   X,
   Menu,
-  Check,
-  User,
 } from "lucide-react";
 import { useWorkspaceStore, NavTab } from "@/stores/workspace-store";
 import { api } from "@/lib/api";
@@ -60,7 +55,6 @@ export function Shell() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isWorkspaceMenuOpen, setIsWorkspaceMenuOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
   // Auto authenticate with demo account on load
@@ -150,52 +144,20 @@ export function Shell() {
                 </button>
               </div>
 
-              {/* WORKSPACE SELECTOR */}
-              <div className="relative mb-3">
+              {/* GLOBAL SEARCH / COMMAND PALETTE TRIGGER */}
+              <div className="mb-3">
                 <button
-                  onClick={() => setIsWorkspaceMenuOpen(!isWorkspaceMenuOpen)}
-                  className="w-full px-2.5 py-1.5 rounded-lg bg-[#0b1312] border border-[#202e2b] hover:border-[#334641] flex items-center justify-between transition-colors text-left text-xs text-[#d6dedc]"
+                  onClick={() => setCommandPaletteOpen(true)}
+                  className="w-full px-2.5 py-1.5 rounded-lg bg-[#0b1312] border border-[#202e2b] hover:border-[#334641] text-xs font-medium text-[#9aaba8] hover:text-[#f1f5f4] flex items-center justify-between transition-colors"
                 >
-                  <div className="truncate">
-                    <span className="text-[9px] font-mono uppercase tracking-widest text-[#6e807d] block leading-none mb-0.5">
-                      Current space
-                    </span>
-                    <span className="font-medium text-[#f1f5f4] truncate block">
-                      {currentWorkspace?.name || "Personal workspace"}
-                    </span>
+                  <div className="flex items-center gap-2.5">
+                    <Search className="h-4 w-4 text-[#9aaba8]" />
+                    <span>Search</span>
                   </div>
-                  <ChevronDown className="h-3.5 w-3.5 text-[#9aaba8] flex-shrink-0" />
+                  <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#15221e] border border-[#202e2b] text-[#6e807d]">
+                    ⌘K
+                  </kbd>
                 </button>
-
-                <AnimatePresence>
-                  {isWorkspaceMenuOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 4 }}
-                      transition={{ duration: 0.12 }}
-                      className="absolute top-full left-0 right-0 mt-1 z-50 rounded-lg glass-elevated border border-[#202e2b] bg-[#101918] p-1 shadow-lg"
-                    >
-                      {workspaces.map((ws) => (
-                        <button
-                          key={ws.id}
-                          onClick={() => {
-                            setCurrentWorkspace(ws);
-                            setIsWorkspaceMenuOpen(false);
-                          }}
-                          className={`w-full px-2 py-1.5 rounded-md text-xs flex items-center justify-between text-left transition-colors ${
-                            currentWorkspace?.id === ws.id
-                              ? "bg-[#15221e] text-[#a7f3d0] font-medium"
-                              : "text-[#9aaba8] hover:text-[#f1f5f4] hover:bg-[#15221e]/50"
-                          }`}
-                        >
-                          <span className="truncate">{ws.name}</span>
-                          {currentWorkspace?.id === ws.id && <Check className="h-3 w-3 text-[#a7f3d0]" />}
-                        </button>
-                      ))}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
               </div>
 
               {/* NAVIGATION ITEMS */}
@@ -259,38 +221,6 @@ export function Shell() {
                   <Sparkles className="h-4 w-4 text-[#a7f3d0]" />
                   <span>AI Architect</span>
                 </button>
-                <button
-                  onClick={() => setCommandPaletteOpen(true)}
-                  className="w-full px-2.5 py-1.5 rounded-lg text-xs font-medium text-[#9aaba8] hover:text-[#f1f5f4] hover:bg-[#15221e]/50 border border-transparent hover:border-[#202e2b] flex items-center justify-between transition-colors"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Search className="h-4 w-4 text-[#9aaba8]" />
-                    <span>Search</span>
-                  </div>
-                  <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#0b1312] border border-[#202e2b] text-[#6e807d]">
-                    ⌘K
-                  </kbd>
-                </button>
-              </div>
-            </div>
-
-            {/* USER PROFILE FOOTER */}
-            <div className="pt-3 border-t border-[#16221f]">
-              <div className="flex items-center justify-between px-2 py-1 rounded-lg bg-[#0b1312]/70 border border-[#202e2b]">
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="h-6 w-6 rounded-md bg-[#15221e] border border-[#202e2b] flex items-center justify-center text-[#a7f3d0] text-xs font-mono">
-                    HK
-                  </div>
-                  <div className="truncate">
-                    <span className="text-[11px] font-medium text-[#f1f5f4] block truncate leading-tight">
-                      Harsha Kurtkoti
-                    </span>
-                    <span className="text-[9px] text-[#6e807d] font-mono block leading-tight">
-                      harshakurtkoti.in
-                    </span>
-                  </div>
-                </div>
-                <span className="w-1.5 h-1.5 rounded-full bg-[#34d399]" />
               </div>
             </div>
           </div>
