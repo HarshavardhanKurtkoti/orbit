@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     
     # Database
     DATABASE_URL: str | None = None
+    DATABASE_URL_UNPOOLED: str | None = None
     PG_USER: str | None = None
     PG_PASSWORD: str | None = None
     PG_HOST: str = "localhost"
@@ -56,9 +57,21 @@ class Settings(BaseSettings):
             url = url.replace("postgres://", "postgresql+asyncpg://", 1)
         elif url.startswith("postgresql://") and not url.startswith("postgresql+asyncpg://"):
             url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
-        # asyncpg does not accept sslmode query parameter; convert to ssl
-        if "sslmode=" in url:
-            url = url.replace("sslmode=", "ssl=")
+        
+        # asyncpg query parameter compatibility: convert sslmode to ssl and remove channel_binding
+        from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
+        parsed = urlsplit(url)
+        if parsed.query:
+            query_params = parse_qsl(parsed.query)
+            new_params = []
+            for k, v in query_params:
+                if k == "sslmode":
+                    new_params.append(("ssl", v))
+                elif k in ("channel_binding", "endpoint"):
+                    continue
+                else:
+                    new_params.append((k, v))
+            url = urlunsplit((parsed.scheme, parsed.netloc, parsed.path, urlencode(new_params), parsed.fragment))
         return url
 
     model_config = SettingsConfigDict(

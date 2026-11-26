@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.2.1",
     "@orbit/design-tokens": "workspace:*",
     "@orbit/shared-types": "workspace:*",
     "@tanstack/react-query": "^5.66.0",
