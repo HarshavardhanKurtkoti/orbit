@@ -35,14 +35,14 @@ class Settings(BaseSettings):
     # AI Config
     OPENAI_API_KEY: str | None = None
     OPENROUTER_API_KEY: str | None = None
-    OPENROUTER_MODEL: str = "nvidia/nemotron-3-ultra-550b-a55b:free"
+    OPENROUTER_MODEL: str = "nvidia/nemotron-3.5-lightning:free"
     LLM_PROVIDER: str = "openrouter"
     AI_DEMO_MODE: bool = False
 
     @property
     def effective_openrouter_model(self) -> str:
-        if self.OPENROUTER_MODEL == "nvidia/nemotron-3-ultra:free":
-            return "nvidia/nemotron-3-ultra-550b-a55b:free"
+        if "nemotron-3-ultra" in self.OPENROUTER_MODEL:
+            return "nvidia/nemotron-3.5-lightning:free"
         return self.OPENROUTER_MODEL
 
     @property

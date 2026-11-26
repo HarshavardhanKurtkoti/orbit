@@ -59,7 +59,6 @@ async def generate_workspace_job(
     )
     db.add(job)
     await db.commit()
-    await db.refresh(job)
 
     try:
         plan_dict = await AiWorkspaceService.generate_plan(request.prompt)
@@ -72,7 +71,6 @@ async def generate_workspace_job(
         job.completed_at = datetime.now(timezone.utc)
 
     await db.commit()
-    await db.refresh(job)
     return AiJobResponse.model_validate(job)
 
 
