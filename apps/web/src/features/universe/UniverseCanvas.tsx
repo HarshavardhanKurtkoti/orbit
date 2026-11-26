@@ -49,6 +49,7 @@ export function UniverseCanvas({ viewMode = "spatial" }: UniverseCanvasProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filterType, setFilterType] = useState<string>("all");
+  const [isInteractive, setIsInteractive] = useState(true);
 
   const nodeTypes = useMemo(
     () => ({
@@ -319,7 +320,9 @@ export function UniverseCanvas({ viewMode = "spatial" }: UniverseCanvasProps) {
       {/* Floating Canvas Header Overlay */}
       <div className="absolute top-3 left-4 z-10 pointer-events-none flex items-center gap-2.5">
         <div className="px-3 py-1.5 rounded-lg glass-standard text-xs font-mono text-[#d6dedc] pointer-events-auto border-[#202e2b] shadow-sm flex items-center gap-2 bg-[#101918]/90">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#34d399]" />
+          <span className={`w-1.5 h-1.5 rounded-full ${isInteractive ? "bg-[#34d399]" : "bg-[#f87171]"}`} />
+          <span>{isInteractive ? "Interactive" : "Locked"}</span>
+          <span className="text-[#6e807d]">•</span>
           <span>{nodes.length} Nodes</span>
           <span className="text-[#6e807d]">•</span>
           <span>{edges.length} Edges</span>
@@ -351,8 +354,16 @@ export function UniverseCanvas({ viewMode = "spatial" }: UniverseCanvasProps) {
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onNodeDragStop={onNodeDragStop}
+        nodesDraggable={isInteractive}
+        nodesConnectable={isInteractive}
+        elementsSelectable={isInteractive}
+        panOnDrag={isInteractive}
+        zoomOnScroll={isInteractive}
+        zoomOnPinch={isInteractive}
+        zoomOnDoubleClick={isInteractive}
+        panOnScroll={isInteractive}
         fitView
-        className="spatial-canvas-grid"
+        className={`spatial-canvas-grid ${!isInteractive ? "!cursor-default [&_.react-flow__pane]:!cursor-default" : ""}`}
         minZoom={0.2}
         maxZoom={2.5}
         defaultEdgeOptions={{
@@ -364,6 +375,7 @@ export function UniverseCanvas({ viewMode = "spatial" }: UniverseCanvasProps) {
 
         {/* Custom Glass Controls */}
         <Controls
+          onInteractiveChange={(interactiveStatus) => setIsInteractive(interactiveStatus)}
           className="!bg-[#101918]/90 !border-[#202e2b] !rounded-xl !p-1 !shadow-lg backdrop-blur-md [&>button]:!bg-[#15221e] [&>button]:!border-[#202e2b] [&>button]:!text-[#d6dedc] hover:[&>button]:!bg-[#1c2e29] hover:[&>button]:!text-[#a7f3d0] !fill-current"
           position="bottom-left"
         />
