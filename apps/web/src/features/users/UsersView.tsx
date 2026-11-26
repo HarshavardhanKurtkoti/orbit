@@ -192,7 +192,13 @@ export function UsersView() {
       await api.deleteUser(user.id);
       setUsers((prev) => prev.filter((u) => u.id !== user.id));
     } catch (err: any) {
-      alert(err.message || "Failed to delete user");
+      // If the user was already deleted on the server (404), remove stale row from view
+      if (err.message && (err.message.includes("404") || err.message.toLowerCase().includes("not found"))) {
+        setUsers((prev) => prev.filter((u) => u.id !== user.id));
+        fetchUsers();
+      } else {
+        alert(err.message || "Failed to delete user");
+      }
     }
   };
 
