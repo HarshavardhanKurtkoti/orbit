@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "orbit-secret-development-key-change-in-production-389f4h89gh34"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 30  # 30 days
     
     # CORS
     BACKEND_CORS_ORIGINS: List[str] = [

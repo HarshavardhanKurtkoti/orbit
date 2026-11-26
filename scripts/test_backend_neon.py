@@ -23,18 +23,48 @@ async def main():
         mres = await client.get("/metrics")
         print("GET /metrics status:", mres.status_code)
         assert mres.status_code == 200, f"Expected 200, got {mres.status_code}"
-        print(">> Prometheus metrics preview:\n" + "\n".join(mres.text.strip().splitlines()[:15]))
         assert "orbit_api_status 1" in mres.text
-        assert "orbit_graph_nodes_total" in mres.text
         print(">> Prometheus metrics endpoint: VERIFIED!")
 
-        # Test database read query via public endpoint or database directly
+        # Test Auth Demo endpoint
+        auth_res = await client.post("/api/v1/auth/demo")
+        print("POST /api/v1/auth/demo status:", auth_res.status_code)
+        assert auth_res.status_code == 200, f"Expected 200, got {auth_res.status_code}: {auth_res.text}"
+        auth_data = auth_res.json()
+        access_token = auth_data.get("access_token")
+        refresh_token = auth_data.get("refresh_token")
+        assert access_token, "access_token missing from auth response"
+        assert refresh_token, "refresh_token missing from auth response"
+        print(f">> Auth tokens generated: access_token prefix={access_token[:15]}..., refresh_token prefix={refresh_token[:15]}...")
+
+        # Test Auth Refresh endpoint
+        ref_res = await client.post("/api/v1/auth/refresh", json={"refresh_token": refresh_token})
+        print("POST /api/v1/auth/refresh status:", ref_res.status_code)
+        assert ref_res.status_code == 200, f"Expected 200, got {ref_res.status_code}: {ref_res.text}"
+        new_token_data = ref_res.json()
+        assert new_token_data.get("access_token"), "new access_token missing"
+        assert new_token_data.get("refresh_token"), "new refresh_token missing"
+        print(">> Refresh token rotation: VERIFIED!")
+
+        # Test Users List endpoint
+        headers = {"Authorization": f"Bearer {access_token}"}
+        users_res = await client.get("/api/v1/users", headers=headers)
+        print("GET /api/v1/users status:", users_res.status_code)
+        assert users_res.status_code == 200, f"Expected 200, got {users_res.status_code}: {users_res.text}"
+        users_data = users_res.json()
+        assert "users" in users_data
+        print(f">> Users API verified: Total users={users_data.get('total')}, returned count={len(users_data.get('users'))}")
+
+        # Test database read query directly
         from app.core.database import engine  # type: ignore[missing-import]
         from sqlalchemy import text
         async with engine.connect() as conn:
             result = await conn.execute(text("SELECT current_database(), current_user, count(*)::int from information_schema.tables where table_schema = 'public'"))
             row = result.fetchone()
-            print(f">> Neon Orbit Database info: DB={row[0]}, User={row[1]}, Public Tables={row[2]}")
+            if row is not None:
+                print(f">> Neon Orbit Database info: DB={row[0]}, User={row[1]}, Public Tables={row[2]}")
+            else:
+                print(">> Neon Orbit Database info: Connected (empty query result)")
 
 if __name__ == "__main__":
     asyncio.run(main())

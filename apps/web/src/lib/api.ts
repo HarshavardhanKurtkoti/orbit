@@ -366,11 +366,13 @@ When nodes are dragged across spatial coordinates, updates are debounced and syn
 
 class ApiClient {
   private token: string | null = null;
+  private refreshToken: string | null = null;
   private localState = JSON.parse(JSON.stringify(INITIAL_DEMO_DATA));
 
   constructor() {
     if (typeof window !== "undefined") {
       this.token = localStorage.getItem("orbit_token");
+      this.refreshToken = localStorage.getItem("orbit_refresh_token");
       try {
         const cached = localStorage.getItem("orbit_local_state");
         if (cached) {
@@ -393,15 +395,51 @@ class ApiClient {
   }
 
   setToken(token: string | null) {
-    this.token = token;
+    this.setTokens(token);
+  }
+
+  setTokens(accessToken: string | null, refreshToken?: string | null) {
+    this.token = accessToken;
+    if (refreshToken !== undefined) {
+      this.refreshToken = refreshToken;
+    }
     if (typeof window !== "undefined") {
-      if (token) localStorage.setItem("orbit_token", token);
+      if (accessToken) localStorage.setItem("orbit_token", accessToken);
       else localStorage.removeItem("orbit_token");
+
+      if (refreshToken !== undefined) {
+        if (refreshToken) localStorage.setItem("orbit_refresh_token", refreshToken);
+        else localStorage.removeItem("orbit_refresh_token");
+      }
     }
   }
 
   getToken(): string | null {
     return this.token;
+  }
+
+  getRefreshToken(): string | null {
+    return this.refreshToken;
+  }
+
+  getTokens() {
+    return {
+      accessToken: this.token,
+      refreshToken: this.refreshToken,
+    };
+  }
+
+  decodeJwt(jwtString?: string | null): any {
+    const t = jwtString || this.token;
+    if (!t) return null;
+    try {
+      const parts = t.split(".");
+      if (parts.length < 2) return null;
+      const payload = atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"));
+      return JSON.parse(payload);
+    } catch {
+      return null;
+    }
   }
 
   // Synchronous cache accessors for instant, zero-latency rendering
@@ -429,7 +467,7 @@ class ApiClient {
     return this.localState.workspaces || [];
   }
 
-  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  private async request<T>(endpoint: string, options: RequestInit = {}, isRetry: boolean = false): Promise<T> {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       ...(options.headers as Record<string, string>),
@@ -453,6 +491,18 @@ class ApiClient {
 
       clearTimeout(timeoutId);
 
+      // Handle 401 Unauthorized with automatic refresh token rotation
+      if (response.status === 401 && !isRetry && !endpoint.includes("/auth/refresh") && this.refreshToken) {
+        try {
+          const refreshed = await this.refreshSession();
+          if (refreshed?.access_token) {
+            return this.request<T>(endpoint, options, true);
+          }
+        } catch {
+          // Token refresh failed, continue to throw original error
+        }
+      }
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ detail: "Request failed" }));
         throw new Error(errorData.detail || `HTTP Error ${response.status}`);
@@ -466,25 +516,99 @@ class ApiClient {
   }
 
   // Auth
+  async login(credentials: { email: string; password: string }) {
+    const data = await this.request<{
+      access_token: string;
+      refresh_token: string;
+      token_type: string;
+      expires_in: number;
+      user: any;
+    }>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify(credentials),
+    });
+    this.setTokens(data.access_token, data.refresh_token);
+    return data;
+  }
+
+  async register(payload: {
+    email: string;
+    password: string;
+    display_name: string;
+    role?: string;
+  }) {
+    const data = await this.request<{
+      access_token: string;
+      refresh_token: string;
+      token_type: string;
+      expires_in: number;
+      user: any;
+    }>("/auth/register", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    this.setTokens(data.access_token, data.refresh_token);
+    return data;
+  }
+
   async demoLogin() {
     try {
-      const data = await this.request<{ access_token: string; user: any }>("/auth/demo", {
+      const data = await this.request<{
+        access_token: string;
+        refresh_token: string;
+        token_type: string;
+        expires_in: number;
+        user: any;
+      }>("/auth/demo", {
         method: "POST",
       });
-      this.setToken(data.access_token);
+      this.setTokens(data.access_token, data.refresh_token);
       return data;
     } catch {
       // Offline fallback
       const fallback = {
         access_token: "demo_spatial_jwt_token",
+        refresh_token: "demo_spatial_refresh_token",
+        token_type: "bearer",
+        expires_in: 604800,
         user: {
           id: "usr_commander",
-          email: "commander@orbit.system",
-          displayName: "Commander Orbit",
+          email: "commander@orbit.internal",
+          display_name: "Orbit Commander",
+          role: "admin",
+          status: "active",
         },
       };
-      this.setToken(fallback.access_token);
+      this.setTokens(fallback.access_token, fallback.refresh_token);
       return fallback;
+    }
+  }
+
+  async refreshSession() {
+    if (!this.refreshToken) {
+      throw new Error("No refresh token available");
+    }
+    const data = await this.request<{
+      access_token: string;
+      refresh_token: string;
+      token_type: string;
+      expires_in: number;
+      user: any;
+    }>("/auth/refresh", {
+      method: "POST",
+      body: JSON.stringify({ refresh_token: this.refreshToken }),
+    });
+    this.setTokens(data.access_token, data.refresh_token);
+    return data;
+  }
+
+  async logout() {
+    try {
+      await this.request<any>("/auth/logout", { method: "POST" });
+    } catch {
+      // proceed with local cleanup
+    } finally {
+      this.setTokens(null, null);
     }
   }
 
@@ -494,10 +618,85 @@ class ApiClient {
     } catch {
       return {
         id: "usr_commander",
-        email: "commander@orbit.system",
-        displayName: "Commander Orbit",
+        email: "commander@orbit.internal",
+        display_name: "Orbit Commander",
+        role: "admin",
+        status: "active",
       };
     }
+  }
+
+  // Users Management
+  async listUsers(params?: { q?: string; role?: string; status?: string; page?: number; page_size?: number }) {
+    const searchParams = new URLSearchParams();
+    if (params?.q) searchParams.set("q", params.q);
+    if (params?.role && params.role !== "all") searchParams.set("role", params.role);
+    if (params?.status && params.status !== "all") searchParams.set("status", params.status);
+    if (params?.page) searchParams.set("page", String(params.page));
+    if (params?.page_size) searchParams.set("page_size", String(params.page_size));
+
+    const qs = searchParams.toString();
+    try {
+      return await this.request<{
+        users: any[];
+        total: number;
+        page: number;
+        page_size: number;
+      }>(`/users${qs ? `?${qs}` : ""}`);
+    } catch {
+      // Local fallback
+      return {
+        users: [
+          {
+            id: "usr_commander",
+            email: "commander@orbit.internal",
+            display_name: "Orbit Commander",
+            role: "admin",
+            status: "active",
+            created_at: new Date(Date.now() - 86400000 * 10).toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+          {
+            id: "usr_neural",
+            email: "research@orbit.internal",
+            display_name: "Neural Research Lead",
+            role: "member",
+            status: "active",
+            created_at: new Date(Date.now() - 86400000 * 5).toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+        ],
+        total: 2,
+        page: 1,
+        page_size: 20,
+      };
+    }
+  }
+
+  async createUser(payload: {
+    email: string;
+    display_name: string;
+    password: string;
+    role?: string;
+    status?: string;
+  }) {
+    return await this.request<any>("/users", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async updateUser(userId: string, payload: any) {
+    return await this.request<any>(`/users/${userId}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async deleteUser(userId: string) {
+    return await this.request<any>(`/users/${userId}`, {
+      method: "DELETE",
+    });
   }
 
   // Workspaces

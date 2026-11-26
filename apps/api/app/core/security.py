@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta, timezone
-from typing import Any, Union
+from typing import Any, Dict, Optional, Union
 import bcrypt
 import jwt
 from fastapi import Depends, HTTPException, status
@@ -28,15 +28,48 @@ def get_password_hash(password: str) -> str:
     return bcrypt.hashpw(password.encode("utf-8")[:72], salt).decode("utf-8")
 
 
-
-def create_access_token(subject: Union[str, Any], expires_delta: timedelta = None) -> str:
+def create_access_token(
+    subject: Union[str, Any],
+    extra_claims: Optional[Dict[str, Any]] = None,
+    expires_delta: Optional[timedelta] = None
+) -> str:
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
     else:
         expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode = {"exp": expire, "sub": str(subject)}
-    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
-    return encoded_jwt
+    to_encode: Dict[str, Any] = {
+        "exp": expire,
+        "sub": str(subject),
+        "type": "access",
+        "iat": datetime.now(timezone.utc)
+    }
+    if extra_claims:
+        to_encode.update(extra_claims)
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+
+def create_refresh_token(
+    subject: Union[str, Any],
+    extra_claims: Optional[Dict[str, Any]] = None,
+    expires_delta: Optional[timedelta] = None
+) -> str:
+    if expires_delta:
+        expire = datetime.now(timezone.utc) + expires_delta
+    else:
+        expire = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    to_encode: Dict[str, Any] = {
+        "exp": expire,
+        "sub": str(subject),
+        "type": "refresh",
+        "iat": datetime.now(timezone.utc)
+    }
+    if extra_claims:
+        to_encode.update(extra_claims)
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+
+def decode_token(token: str) -> Dict[str, Any]:
+    return jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
 
 
 async def get_current_user_optional(
@@ -46,7 +79,7 @@ async def get_current_user_optional(
     if not token:
         return None
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        payload = decode_token(token)
         user_id: str = payload.get("sub")
         if user_id is None:
             return None
@@ -71,9 +104,10 @@ async def get_current_user(
     if not token:
         raise credentials_exception
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        payload = decode_token(token)
         user_id: str = payload.get("sub")
-        if user_id is None:
+        token_type: str = payload.get("type", "access")
+        if user_id is None or token_type != "access":
             raise credentials_exception
     except jwt.PyJWTError:
         raise credentials_exception
@@ -83,4 +117,20 @@ async def get_current_user(
     user = result.scalar_one_or_none()
     if user is None:
         raise credentials_exception
+    if user.status == "suspended":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your account has been suspended"
+        )
     return user
+
+
+async def require_admin(
+    current_user = Depends(get_current_user)
+):
+    if current_user.role not in ("admin", "owner"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin privileges required"
+        )
+    return current_user

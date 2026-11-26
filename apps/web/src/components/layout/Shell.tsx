@@ -10,6 +10,7 @@ import {
   BookOpen,
   CalendarDays,
   BarChart3,
+  Users,
   Sparkles,
   Search,
   X,
@@ -25,6 +26,7 @@ import { TasksView } from "@/features/tasks/TasksView";
 import { NotesView } from "@/features/notes/NotesView";
 import { TimelineView } from "@/features/timeline/TimelineView";
 import { AnalyticsView } from "@/features/analytics/AnalyticsView";
+import { UsersView } from "@/features/users/UsersView";
 import { AiGeneratorModal } from "@/features/ai/AiGeneratorModal";
 import { AmbientBackground } from "@/components/ui/AmbientBackground";
 import { GlassButton } from "@/components/ui/GlassButton";
@@ -44,6 +46,7 @@ const NAV_ITEMS: NavItemConfig[] = [
   { id: "notes", label: "Notes", href: "/notes", icon: BookOpen },
   { id: "timeline", label: "Timeline", href: "/timeline", icon: CalendarDays },
   { id: "analytics", label: "Analytics", href: "/analytics", icon: BarChart3 },
+  { id: "users", label: "Users & Access", href: "/users", icon: Users },
 ];
 
 interface ShellProps {
@@ -80,6 +83,7 @@ export function Shell({ children, activeTab: propTab }: ShellProps) {
     if (pathname.startsWith("/notes")) return "notes";
     if (pathname.startsWith("/timeline")) return "timeline";
     if (pathname.startsWith("/analytics")) return "analytics";
+    if (pathname.startsWith("/users")) return "users";
     return storeTab || "home";
   }, [pathname, propTab, storeTab]);
 
@@ -326,6 +330,7 @@ export function Shell({ children, activeTab: propTab }: ShellProps) {
                 {activeTab === "notes" && <NotesView />}
                 {activeTab === "timeline" && <TimelineView />}
                 {activeTab === "analytics" && <AnalyticsView />}
+                {activeTab === "users" && <UsersView />}
               </>
             )}
           </div>

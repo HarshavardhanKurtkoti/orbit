@@ -16,6 +16,7 @@ import { api } from "@/lib/api";
 import { GlassPanel } from "@/components/ui/GlassPanel";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { GlassButton } from "@/components/ui/GlassButton";
+import { SkeletonLoader } from "@/components/ui/SkeletonLoader";
 
 export function TasksView() {
   const {
@@ -36,11 +37,13 @@ export function TasksView() {
   const [selectedPriority, setSelectedPriority] = useState<string>("medium");
   const [filterPriority, setFilterPriority] = useState<string>("all");
   const [isCreatingInLane, setIsCreatingInLane] = useState<string | null>(null);
+  const [loading, setLoading] = useState(storeTasks.length === 0);
 
   // Sync with store updates
   useEffect(() => {
     if (storeTasks && storeTasks.length > 0) {
       setTasks(storeTasks);
+      setLoading(false);
     }
   }, [storeTasks]);
 
@@ -55,6 +58,7 @@ export function TasksView() {
     if (!currentWorkspace?.id) return;
     async function fetchTasks() {
       try {
+        if (tasks.length === 0) setLoading(true);
         const [taskData, projData] = await Promise.all([
           api.listTasks(currentWorkspace.id),
           api.listProjects(currentWorkspace.id),
@@ -66,10 +70,12 @@ export function TasksView() {
         if (projData.length > 0) setSelectedProjectId(projData[0].id);
       } catch (err) {
         console.error("Tasks fetch error:", err);
+      } finally {
+        setLoading(false);
       }
     }
     fetchTasks();
-  }, [currentWorkspace?.id, setStoreTasks, setStoreProjects]);
+  }, [currentWorkspace?.id, setStoreTasks, setStoreProjects, tasks.length]);
 
   const handleCreateTask = async (e?: React.FormEvent, laneStatus: string = "todo") => {
     if (e) e.preventDefault();
@@ -297,9 +303,19 @@ export function TasksView() {
                   )}
                 </AnimatePresence>
 
-                {colTasks.length === 0 ? (
+                {loading ? (
+                  <div className="space-y-2.5 py-2">
+                    <div className="flex items-center gap-2 text-[11px] font-mono text-[#a7f3d0] animate-pulse px-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#34d399]" />
+                      <span>Buffering tasks...</span>
+                    </div>
+                    <SkeletonLoader className="h-20 w-full bg-[#15221e]/40 border border-[#202e2b]" />
+                    <SkeletonLoader className="h-20 w-full bg-[#15221e]/30 border border-[#202e2b]" />
+                    <SkeletonLoader className="h-16 w-full bg-[#15221e]/20 border border-[#202e2b]" />
+                  </div>
+                ) : colTasks.length === 0 ? (
                   <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-xs text-[#6e807d] font-mono">
-                    <p>No tasks in lane</p>
+                    <p>No tasks to show</p>
                     <button
                       onClick={() => setIsCreatingInLane(col.id)}
                       className="mt-1.5 text-[#a7f3d0] hover:underline flex items-center gap-1 text-[11px]"

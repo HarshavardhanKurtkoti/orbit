@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { api } from "@/lib/api";
 
-export type NavTab = "home" | "universe" | "tasks" | "notes" | "timeline" | "analytics" | "projects";
+export type NavTab = "home" | "universe" | "tasks" | "notes" | "timeline" | "analytics" | "projects" | "users";
 
 export interface SelectedEntity {
   type: "project" | "task" | "note" | "goal";
