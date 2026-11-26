@@ -12,30 +12,22 @@ export const AmbientBackground = memo(({ children, showOrbits = true }: AmbientB
   const prefersReducedMotion = useReducedMotion();
 
   return (
-    <div className="relative w-full h-full overflow-hidden bg-[#070914] text-[#F8FAFC]">
-      {/* 1. Deep Atmospheric Gradient Layers */}
+    <div className="relative w-full h-full overflow-hidden bg-[#080d10] text-[#f1f5f4]">
+      {/* 1. Deep Subtle Slate Canvas Depth (harshakurtkoti.in reference) */}
       <div className="absolute inset-0 pointer-events-none z-0">
-        {/* Top-center soft violet aurora */}
+        {/* Subtle center-top radial light source */}
         <div
-          className="absolute -top-[20%] left-1/2 -translate-x-1/2 w-[70vw] h-[55vh] rounded-full opacity-40 blur-[130px] pointer-events-none"
+          className="absolute -top-[15%] left-1/2 -translate-x-1/2 w-[60vw] h-[40vh] rounded-full opacity-15 blur-[120px] pointer-events-none"
           style={{
-            background: "radial-gradient(circle, rgba(147, 102, 255, 0.28) 0%, rgba(124, 58, 237, 0.08) 50%, transparent 80%)",
+            background: "radial-gradient(circle, rgba(167, 243, 208, 0.18) 0%, rgba(52, 211, 153, 0.05) 50%, transparent 80%)",
           }}
         />
 
-        {/* Top-right electric blue / cyan glow */}
+        {/* Subtle corner depth */}
         <div
-          className="absolute top-[5%] -right-[10%] w-[45vw] h-[50vh] rounded-full opacity-30 blur-[120px] pointer-events-none"
+          className="absolute bottom-0 right-0 w-[40vw] h-[35vh] rounded-full opacity-10 blur-[130px] pointer-events-none"
           style={{
-            background: "radial-gradient(circle, rgba(56, 189, 248, 0.22) 0%, rgba(34, 211, 238, 0.06) 60%, transparent 80%)",
-          }}
-        />
-
-        {/* Bottom-left subtle cyan anchor */}
-        <div
-          className="absolute -bottom-[15%] -left-[10%] w-[50vw] h-[50vh] rounded-full opacity-25 blur-[140px] pointer-events-none"
-          style={{
-            background: "radial-gradient(circle, rgba(34, 211, 238, 0.18) 0%, rgba(147, 102, 255, 0.06) 55%, transparent 75%)",
+            background: "radial-gradient(circle, rgba(56, 189, 248, 0.12) 0%, transparent 70%)",
           }}
         />
 
@@ -43,27 +35,27 @@ export const AmbientBackground = memo(({ children, showOrbits = true }: AmbientB
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
-            background: "radial-gradient(circle at 50% 50%, transparent 40%, rgba(7, 9, 20, 0.65) 100%)",
+            background: "radial-gradient(circle at 50% 50%, transparent 60%, rgba(8, 13, 16, 0.8) 100%)",
           }}
         />
       </div>
 
-      {/* 2. Delicate Orbital Ring Guides */}
+      {/* 2. Delicate Architectural Coordinate Guides (Systems in Motion reference) */}
       {showOrbits && (
-        <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden flex items-center justify-center opacity-30">
+        <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden flex items-center justify-center opacity-15">
           <div
-            className={`w-[900px] h-[900px] rounded-full border border-white/[0.035] ${
-              prefersReducedMotion ? "" : "animate-[spin_160s_linear_infinite]"
+            className={`w-[850px] h-[850px] rounded-full border border-[#202e2b] ${
+              prefersReducedMotion ? "" : "animate-[spin_240s_linear_infinite]"
             }`}
             style={{ borderStyle: "dashed" }}
           />
-          <div className="absolute w-[640px] h-[640px] rounded-full border border-purple-500/[0.04]" />
-          <div className="absolute w-[380px] h-[380px] rounded-full border border-cyan-400/[0.04]" />
+          <div className="absolute w-[580px] h-[580px] rounded-full border border-[#16221f]" />
+          <div className="absolute w-[320px] h-[320px] rounded-full border border-[#202e2b]/60" />
         </div>
       )}
 
       {/* 3. High-precision Subtle Coordinate Grid */}
-      <div className="absolute inset-0 spatial-canvas-grid pointer-events-none z-0 opacity-60" />
+      <div className="absolute inset-0 spatial-canvas-grid pointer-events-none z-0 opacity-45" />
 
       {/* Content Mount */}
       <div className="relative z-10 w-full h-full flex flex-col">{children}</div>

@@ -6,19 +6,13 @@ import {
   CheckSquare,
   Plus,
   Clock,
-  AlertCircle,
   FolderGit2,
-  Tag,
   Circle,
   CheckCircle2,
-  ChevronRight,
-  Sparkles,
-  ArrowRight,
   Filter,
 } from "lucide-react";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { api } from "@/lib/api";
-import { staggerContainer, staggerItem, squashStretchVariant } from "@/motion";
 import { GlassPanel } from "@/components/ui/GlassPanel";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { GlassButton } from "@/components/ui/GlassButton";
@@ -77,7 +71,7 @@ export function TasksView() {
   const handleStatusChange = async (taskId: string, newStatus: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
 
-    // Optimistic UI Update (Principle 16: Doherty threshold)
+    // Optimistic UI Update (Doherty threshold)
     setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t)));
 
     try {
@@ -100,53 +94,52 @@ export function TasksView() {
     {
       id: "todo",
       label: "To Do",
-      color: "border-sky-500/40",
-      accent: "bg-[#38BDF8]",
-      glow: "hover:border-[#38BDF8]/40",
+      accent: "bg-[#38bdf8]",
     },
     {
       id: "in_progress",
-      label: "In Flight",
-      color: "border-purple-500/40",
-      accent: "bg-[#9366FF]",
-      glow: "hover:border-[#9366FF]/40",
+      label: "In Progress",
+      accent: "bg-[#a7f3d0]",
     },
     {
       id: "done",
       label: "Completed",
-      color: "border-emerald-500/40",
-      accent: "bg-[#34D399]",
-      glow: "hover:border-[#34D399]/40",
+      accent: "bg-[#34d399]",
     },
   ];
 
   return (
     <div className="h-full w-full overflow-y-auto px-4 py-6 md:p-8 space-y-6 max-w-7xl mx-auto">
-      {/* 1. TOP HEADER & QUICK CREATION BAR */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-white/[0.08]">
-        <div>
-          <h1 className="text-xl md:text-2xl font-bold text-white flex items-center gap-2.5">
-            <CheckSquare className="h-6 w-6 text-[#38BDF8]" />
-            Spatial Kanban & Execution Mesh
+      {/* 1. TOP HEADER */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-4 border-b border-[#202e2b]">
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2">
+            <span className="w-5 h-[2px] bg-[#a7f3d0] rounded-sm" />
+            <span className="text-[10px] font-mono uppercase tracking-widest text-[#a7f3d0] font-medium">
+              02 / Execution Board
+            </span>
+          </div>
+          <h1 className="text-xl md:text-2xl font-normal text-[#f1f5f4] font-sans">
+            Tasks, <span className="font-serif italic text-[#a7f3d0]">executed.</span>
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
-            Real-time status synchronization with the Universe coordinate graph.
+          <p className="text-xs text-[#9aaba8]">
+            Linear-inspired execution board synchronized with your knowledge graph.
           </p>
         </div>
 
-        {/* Priority Filter and Add Action */}
-        <div className="flex items-center gap-2.5 flex-wrap">
-          <div className="flex items-center gap-1 px-2.5 py-1 rounded-xl glass-subtle text-xs border-white/10">
-            <Filter className="h-3 w-3 text-slate-400" />
-            <span className="text-slate-400 mr-1">Priority:</span>
-            {["all", "urgent", "high", "medium"].map((p) => (
+        {/* Priority Filter */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#0b1312] border border-[#202e2b] text-xs">
+            <Filter className="h-3 w-3 text-[#6e807d]" />
+            <span className="text-[#6e807d] mr-1 text-[11px] font-mono">Filter:</span>
+            {["all", "urgent", "high", "medium", "low"].map((p) => (
               <button
                 key={p}
                 onClick={() => setFilterPriority(p)}
-                className={`px-2 py-0.5 rounded-lg capitalize text-[11px] transition-colors ${
+                className={`px-2 py-0.5 rounded capitalize text-[10px] font-mono transition-colors ${
                   filterPriority === p
-                    ? "bg-[#9366FF]/30 text-white font-medium border border-[#9366FF]/40"
-                    : "text-slate-400 hover:text-white"
+                    ? "bg-[#15221e] text-[#a7f3d0] font-medium border border-[#202e2b]"
+                    : "text-[#9aaba8] hover:text-[#f1f5f4]"
                 }`}
               >
                 {p}
@@ -157,14 +150,14 @@ export function TasksView() {
       </div>
 
       {/* 2. QUICK TASK CREATION FORM */}
-      <GlassPanel elevation="standard" className="p-3.5">
-        <form onSubmit={(e) => handleCreateTask(e, "todo")} className="flex flex-col sm:flex-row items-center gap-3">
+      <GlassPanel elevation="standard" className="p-3 bg-[#101918]">
+        <form onSubmit={(e) => handleCreateTask(e, "todo")} className="flex flex-col sm:flex-row items-center gap-2.5">
           <input
             type="text"
             value={newTaskTitle}
             onChange={(e) => setNewTaskTitle(e.target.value)}
-            placeholder="Type new operational task title..."
-            className="flex-1 w-full px-4 py-2 rounded-xl bg-white/[0.04] border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#9366FF] transition-colors"
+            placeholder="Add a new task..."
+            className="flex-1 w-full px-3 py-1.5 rounded-lg bg-[#0b1312] border border-[#202e2b] text-xs text-[#f1f5f4] placeholder-[#6e807d] focus:outline-none focus:border-[#a7f3d0] transition-colors"
           />
 
           <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -172,7 +165,7 @@ export function TasksView() {
             <select
               value={selectedProjectId}
               onChange={(e) => setSelectedProjectId(e.target.value)}
-              className="px-3 py-2 rounded-xl bg-[#101426] border border-white/10 text-xs text-slate-300 focus:outline-none focus:border-[#9366FF] cursor-pointer"
+              className="px-2.5 py-1.5 rounded-lg bg-[#0b1312] border border-[#202e2b] text-xs text-[#d6dedc] focus:outline-none focus:border-[#a7f3d0] cursor-pointer"
             >
               {projects.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -185,7 +178,7 @@ export function TasksView() {
             <select
               value={selectedPriority}
               onChange={(e) => setSelectedPriority(e.target.value)}
-              className="px-3 py-2 rounded-xl bg-[#101426] border border-white/10 text-xs text-slate-300 focus:outline-none focus:border-[#9366FF] cursor-pointer"
+              className="px-2.5 py-1.5 rounded-lg bg-[#0b1312] border border-[#202e2b] text-xs text-[#d6dedc] focus:outline-none focus:border-[#a7f3d0] cursor-pointer"
             >
               <option value="urgent">Urgent</option>
               <option value="high">High</option>
@@ -196,56 +189,56 @@ export function TasksView() {
             <GlassButton
               type="submit"
               variant="primary"
-              size="md"
-              icon={<Plus className="h-4 w-4" />}
+              size="sm"
+              icon={<Plus className="h-3.5 w-3.5" />}
             >
-              Add Task
+              Add
             </GlassButton>
           </div>
         </form>
       </GlassPanel>
 
-      {/* 3. FLOATING GLASS LANES */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* 3. KANBAN LANES */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         {columns.map((col) => {
           const colTasks = filteredTasks.filter((t) => t.status === col.id);
           return (
-            <div key={col.id} className="space-y-3 flex flex-col">
+            <div key={col.id} className="space-y-2.5 flex flex-col">
               {/* Lane Header */}
-              <div className="flex items-center justify-between px-2">
+              <div className="flex items-center justify-between px-1">
                 <div className="flex items-center gap-2">
-                  <span className={`w-2 h-2 rounded-full ${col.accent} shadow-sm`} />
-                  <span className="text-xs font-bold text-white tracking-wider uppercase font-mono">
+                  <span className={`w-1.5 h-1.5 rounded-full ${col.accent}`} />
+                  <span className="text-xs font-mono uppercase tracking-wider text-[#d6dedc] font-medium">
                     {col.label}
                   </span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-mono text-slate-400 px-2 py-0.5 rounded-full bg-white/5 border border-white/10">
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] font-mono text-[#6e807d] px-1.5 py-0.2 rounded bg-[#0b1312] border border-[#202e2b]">
                     {colTasks.length}
                   </span>
                   <button
                     onClick={() => setIsCreatingInLane(col.id)}
-                    className="p-1 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+                    className="p-1 rounded hover:bg-[#15221e] text-[#6e807d] hover:text-[#f1f5f4] transition-colors"
                     title="Add task to this lane"
                   >
-                    <Plus className="h-3.5 w-3.5" />
+                    <Plus className="h-3 w-3" />
                   </button>
                 </div>
               </div>
 
-              {/* Floating Lane Glass Surface */}
+              {/* Lane Surface */}
               <GlassPanel
                 elevation="standard"
-                className={`p-3 min-h-[500px] flex-1 flex flex-col space-y-3 transition-colors ${col.glow}`}
+                className="p-2.5 min-h-[460px] flex-1 flex flex-col space-y-2.5 bg-[#101918]"
               >
-                {/* Inline Lane Creation Form */}
+                {/* Inline Creation Form */}
                 <AnimatePresence>
                   {isCreatingInLane === col.id && (
                     <motion.div
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: "auto" }}
                       exit={{ opacity: 0, height: 0 }}
-                      className="p-3 rounded-2xl glass-elevated border border-white/15 space-y-2 mb-2"
+                      className="p-2.5 rounded-lg glass-elevated border border-[#202e2b] bg-[#15221e] space-y-2 mb-1"
                     >
                       <input
                         type="text"
@@ -253,16 +246,16 @@ export function TasksView() {
                         value={newTaskTitle}
                         onChange={(e) => setNewTaskTitle(e.target.value)}
                         placeholder="Task title..."
-                        className="w-full px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-[#9366FF]"
+                        className="w-full px-2.5 py-1 rounded bg-[#0b1312] border border-[#202e2b] text-xs text-[#f1f5f4] focus:outline-none focus:border-[#a7f3d0]"
                         onKeyDown={(e) => {
                           if (e.key === "Enter") handleCreateTask(undefined, col.id);
                           if (e.key === "Escape") setIsCreatingInLane(null);
                         }}
                       />
-                      <div className="flex justify-end gap-2">
+                      <div className="flex justify-end gap-1.5">
                         <button
                           onClick={() => setIsCreatingInLane(null)}
-                          className="px-2.5 py-1 text-[11px] text-slate-400 hover:text-white"
+                          className="px-2 py-0.5 text-[10px] font-mono text-[#9aaba8] hover:text-[#f1f5f4]"
                         >
                           Cancel
                         </button>
@@ -279,13 +272,13 @@ export function TasksView() {
                 </AnimatePresence>
 
                 {colTasks.length === 0 ? (
-                  <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-xs text-slate-500 font-mono">
-                    <p>No tasks in this lane</p>
+                  <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-xs text-[#6e807d] font-mono">
+                    <p>No tasks in lane</p>
                     <button
                       onClick={() => setIsCreatingInLane(col.id)}
-                      className="mt-2 text-[#38BDF8] hover:underline flex items-center gap-1 text-[11px]"
+                      className="mt-1.5 text-[#a7f3d0] hover:underline flex items-center gap-1 text-[11px]"
                     >
-                      <Plus className="h-3 w-3" /> Add one now
+                      <Plus className="h-3 w-3" /> Add task
                     </button>
                   </div>
                 ) : (
@@ -296,7 +289,7 @@ export function TasksView() {
                     return (
                       <GlassCard
                         key={task.id}
-                        elevation="elevated"
+                        elevation="standard"
                         onClick={() =>
                           setSelectedEntity({
                             type: "task",
@@ -304,22 +297,22 @@ export function TasksView() {
                             data: task,
                           })
                         }
-                        className="p-3.5 space-y-3 border-white/[0.09] hover:border-white/20 transition-all shadow-md group"
+                        className="p-3 space-y-2.5 border-[#202e2b] hover:border-[#334641] transition-all bg-[#0b1312] group rounded-lg"
                       >
-                        {/* Task Top: Project Badge & Priority */}
+                        {/* Task Top: Project Tag & Priority */}
                         <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-mono text-purple-300 flex items-center gap-1 truncate max-w-[140px]">
-                            <FolderGit2 className="h-3 w-3 text-[#9366FF] flex-shrink-0" />
-                            <span className="truncate">{project?.title || "Orbit Prime"}</span>
+                          <span className="text-[10px] font-mono text-[#a7f3d0] flex items-center gap-1 truncate max-w-[130px]">
+                            <FolderGit2 className="h-3 w-3 text-[#a7f3d0] flex-shrink-0" />
+                            <span className="truncate">{project?.title || "Workspace"}</span>
                           </span>
 
                           <span
-                            className={`text-[9px] font-mono uppercase px-2 py-0.5 rounded border ${
+                            className={`text-[9px] font-mono uppercase px-1.5 py-0.2 rounded border ${
                               task.priority === "urgent"
-                                ? "bg-rose-500/15 border-rose-500/30 text-rose-300"
+                                ? "bg-[#f87171]/10 border-[#f87171]/25 text-[#f87171]"
                                 : task.priority === "high"
-                                ? "bg-purple-500/15 border-purple-500/30 text-purple-300"
-                                : "bg-sky-500/15 border-sky-500/30 text-sky-300"
+                                ? "bg-[#fbbf24]/10 border-[#fbbf24]/25 text-[#fbbf24]"
+                                : "bg-[#15221e] border-[#202e2b] text-[#9aaba8]"
                             }`}
                           >
                             {task.priority}
@@ -327,7 +320,7 @@ export function TasksView() {
                         </div>
 
                         {/* Title with checkbox */}
-                        <div className="flex items-start gap-2.5">
+                        <div className="flex items-start gap-2">
                           <button
                             onClick={(e) =>
                               handleStatusChange(
@@ -336,18 +329,18 @@ export function TasksView() {
                                 e
                               )
                             }
-                            className="mt-0.5 p-0.5 text-slate-400 hover:text-white transition-colors"
+                            className="mt-0.5 text-[#6e807d] hover:text-[#34d399] transition-colors"
                           >
                             {isDone ? (
-                              <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                              <CheckCircle2 className="h-3.5 w-3.5 text-[#34d399]" />
                             ) : (
-                              <Circle className="h-4 w-4 text-slate-500 group-hover:text-purple-400" />
+                              <Circle className="h-3.5 w-3.5 text-[#6e807d] group-hover:text-[#a7f3d0]" />
                             )}
                           </button>
 
                           <span
-                            className={`text-xs font-semibold leading-relaxed ${
-                              isDone ? "line-through text-slate-500" : "text-white"
+                            className={`text-xs font-medium leading-relaxed ${
+                              isDone ? "line-through text-[#6e807d]" : "text-[#f1f5f4]"
                             }`}
                           >
                             {task.title}
@@ -355,8 +348,8 @@ export function TasksView() {
                         </div>
 
                         {/* Footer info: Due date & status transition buttons */}
-                        <div className="pt-2.5 border-t border-white/[0.06] flex items-center justify-between text-[10px] font-mono text-slate-400">
-                          <div className="flex items-center gap-1 text-slate-400">
+                        <div className="pt-2 border-t border-[#16221f] flex items-center justify-between text-[10px] font-mono text-[#6e807d]">
+                          <div className="flex items-center gap-1">
                             <Clock className="h-3 w-3" />
                             <span>{task.due_date || "Upcoming"}</span>
                           </div>
@@ -366,7 +359,7 @@ export function TasksView() {
                             {col.id !== "todo" && (
                               <button
                                 onClick={(e) => handleStatusChange(task.id, "todo", e)}
-                                className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition-colors"
+                                className="px-1.5 py-0.2 rounded bg-[#15221e] hover:bg-[#1c2e29] text-[#9aaba8] hover:text-[#f1f5f4] transition-colors"
                               >
                                 Todo
                               </button>
@@ -374,15 +367,15 @@ export function TasksView() {
                             {col.id !== "in_progress" && (
                               <button
                                 onClick={(e) => handleStatusChange(task.id, "in_progress", e)}
-                                className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition-colors"
+                                className="px-1.5 py-0.2 rounded bg-[#15221e] hover:bg-[#1c2e29] text-[#9aaba8] hover:text-[#a7f3d0] transition-colors"
                               >
-                                Flight
+                                In Progress
                               </button>
                             )}
                             {col.id !== "done" && (
                               <button
                                 onClick={(e) => handleStatusChange(task.id, "done", e)}
-                                className="px-2 py-0.5 rounded bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 transition-colors"
+                                className="px-1.5 py-0.2 rounded bg-[#34d399]/10 hover:bg-[#34d399]/20 text-[#34d399] transition-colors"
                               >
                                 Done
                               </button>

@@ -13,9 +13,9 @@ export const SkeletonLoader: React.FC<SkeletonProps> = ({ className, shimmer = t
     <div
       className={twMerge(
         clsx(
-          "relative overflow-hidden rounded-xl bg-white/[0.04] border border-white/[0.05]",
+          "relative overflow-hidden rounded-lg bg-[#15221e]/70 border border-[#16221f]",
           shimmer &&
-            "before:absolute before:inset-0 before:-translate-x-full before:animate-[shimmer_2s_infinite] before:bg-gradient-to-r before:from-transparent before:via-white/[0.07] before:to-transparent",
+            "before:absolute before:inset-0 before:-translate-x-full before:animate-[shimmer_2s_infinite] before:bg-gradient-to-r before:from-transparent before:via-white/[0.04] before:to-transparent",
           className
         )
       )}

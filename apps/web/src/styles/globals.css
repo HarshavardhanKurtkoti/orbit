@@ -3,29 +3,53 @@
 @tailwind utilities;
 
 :root {
-  --background: #070914;
-  --surface: #101426;
-  --elevated: #171B32;
-  --accent-violet: #9366FF;
-  --accent-blue: #38BDF8;
-  --accent-cyan: #22D3EE;
-  --accent-emerald: #34D399;
-  --text-primary: #F8FAFC;
-  --text-secondary: #A1ABC4;
-  --text-muted: #626D8A;
+  color-scheme: dark;
 
-  /* Glass Surface Tokens */
-  --glass-subtle-bg: rgba(16, 20, 38, 0.52);
-  --glass-subtle-border: rgba(255, 255, 255, 0.07);
-  --glass-subtle-highlight: rgba(255, 255, 255, 0.05);
+  /* Master Design Tokens (harshakurtkoti.in authority) */
+  --canvas: #080d10;
+  --surface: #101918;
+  --surface-subtle: #0b1312;
+  --raised: #15221e;
+  --raised-hover: #1c2e29;
 
-  --glass-standard-bg: rgba(16, 20, 38, 0.72);
-  --glass-standard-border: rgba(255, 255, 255, 0.12);
-  --glass-standard-highlight: rgba(255, 255, 255, 0.10);
+  --ink: #f1f5f4;
+  --ink-secondary: #d6dedc;
+  --muted: #9aaba8;
+  --quiet: #6e807d;
 
-  --glass-elevated-bg: rgba(23, 27, 50, 0.86);
-  --glass-elevated-border: rgba(255, 255, 255, 0.18);
-  --glass-elevated-highlight: rgba(255, 255, 255, 0.15);
+  --line: #202e2b;
+  --hairline: #16221f;
+
+  --mint: #a7f3d0;
+  --mint-subtle: rgba(167, 243, 208, 0.08);
+  --mint-border: rgba(167, 243, 208, 0.22);
+  --signal: #34d399;
+
+  /* Semantic UI Tokens */
+  --background: #080d10;
+  --foreground: #f1f5f4;
+  --card: #101918;
+  --card-foreground: #f1f5f4;
+  --border: #202e2b;
+  --input: #0b1312;
+  --ring: #a7f3d0;
+  --primary: #a7f3d0;
+  --primary-foreground: #080d10;
+  --accent: #a7f3d0;
+  --accent-foreground: #080d10;
+
+  /* Engineering Glass Surfaces */
+  --glass-subtle-bg: rgba(16, 25, 24, 0.55);
+  --glass-subtle-border: #16221f;
+  --glass-subtle-highlight: rgba(255, 255, 255, 0.035);
+
+  --glass-standard-bg: rgba(16, 25, 24, 0.78);
+  --glass-standard-border: #202e2b;
+  --glass-standard-highlight: rgba(255, 255, 255, 0.055);
+
+  --glass-elevated-bg: rgba(21, 34, 30, 0.88);
+  --glass-elevated-border: #2a3d38;
+  --glass-elevated-highlight: rgba(255, 255, 255, 0.085);
 }
 
 * {
@@ -36,140 +60,102 @@ html,
 body {
   margin: 0;
   padding: 0;
-  background-color: var(--background);
-  color: var(--text-primary);
-  font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background-color: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-geist-sans), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   overflow: hidden;
   height: 100vh;
   width: 100vw;
   user-select: none;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Atmospheric Space Backdrop */
-.atmospheric-bg {
-  background-color: #070914;
-  background-image: 
-    radial-gradient(ellipse 80% 60% at 50% -15%, rgba(147, 102, 255, 0.16), transparent 70%),
-    radial-gradient(ellipse 65% 50% at 95% 15%, rgba(56, 189, 248, 0.12), transparent 60%),
-    radial-gradient(ellipse 70% 50% at 5% 85%, rgba(34, 211, 238, 0.09), transparent 65%),
-    radial-gradient(circle at 50% 50%, rgba(16, 20, 38, 0.4), transparent 85%);
-  background-attachment: fixed;
+::selection {
+  background: rgba(167, 243, 208, 0.25);
+  color: #f1f5f4;
 }
 
-/* Spatial Grid Pattern */
+/* Systems Architecture Canvas Grid (harshakurtkoti.in reference) */
 .spatial-canvas-grid {
-  background-size: 36px 36px;
+  background-size: 32px 32px;
   background-image: 
-    linear-gradient(to right, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+    linear-gradient(to right, rgba(32, 46, 43, 0.35) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(32, 46, 43, 0.35) 1px, transparent 1px);
 }
 
 /* Glass Level 1: Subtle (Navigation, secondary bars, pill chips) */
 .glass-subtle {
   background: var(--glass-subtle-bg);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--glass-subtle-border);
-  box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.45), inset 0 1px 0 0 var(--glass-subtle-highlight);
+  box-shadow: 0 4px 16px -4px rgba(0, 0, 0, 0.5), inset 0 1px 0 0 var(--glass-subtle-highlight);
 }
 
 /* Glass Level 2: Standard (Cards, dashboard sections, kanban lanes) */
 .glass-standard {
   background: var(--glass-standard-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
   border: 1px solid var(--glass-standard-border);
-  box-shadow: 0 10px 32px -4px rgba(0, 0, 0, 0.55), inset 0 1px 0 0 var(--glass-standard-highlight);
+  box-shadow: 0 10px 28px -6px rgba(0, 0, 0, 0.65), inset 0 1px 0 0 var(--glass-standard-highlight);
 }
 
 /* Glass Level 3: Elevated (Modals, command palette, floating inspectors, tooltips) */
 .glass-elevated {
   background: var(--glass-elevated-bg);
-  backdrop-filter: blur(30px);
-  -webkit-backdrop-filter: blur(30px);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   border: 1px solid var(--glass-elevated-border);
-  box-shadow: 0 24px 60px -8px rgba(0, 0, 0, 0.75), 0 0 25px -4px rgba(147, 102, 255, 0.12), inset 0 1px 0 0 var(--glass-elevated-highlight);
+  box-shadow: 0 20px 48px -10px rgba(0, 0, 0, 0.8), 0 0 20px -3px rgba(167, 243, 208, 0.1), inset 0 1px 0 0 var(--glass-elevated-highlight);
 }
 
-/* Inner Light / Liquid Shimmer Border */
-.glass-border-glow {
-  position: relative;
-}
-.glass-border-glow::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 1px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.25), rgba(147, 102, 255, 0.3) 40%, rgba(56, 189, 248, 0.1) 80%, rgba(255, 255, 255, 0.05));
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
+/* Subtle architectural hover / active borders */
+.mint-border-highlight {
+  border-color: rgba(167, 243, 208, 0.35);
 }
 
-/* Luminous Glow Accents */
-.glow-aurora {
-  box-shadow: 0 0 35px -5px rgba(147, 102, 255, 0.3), 0 0 15px -2px rgba(34, 211, 238, 0.2);
+/* Precision Kicker & Rules */
+.kicker {
+  font-family: var(--font-geist-mono), "JetBrains Mono", monospace;
+  font-size: 0.6875rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--mint);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.glow-violet {
-  box-shadow: 0 0 30px -4px rgba(147, 102, 255, 0.35);
+.signal-rule {
+  display: inline-block;
+  width: 20px;
+  height: 2px;
+  background-color: var(--mint);
+  border-radius: 1px;
 }
 
-.glow-cyan {
-  box-shadow: 0 0 30px -4px rgba(34, 211, 238, 0.3);
-}
-
-.glow-emerald {
-  box-shadow: 0 0 30px -4px rgba(52, 211, 153, 0.3);
-}
-
-/* Custom Deep Space Scrollbar */
+/* Subtle Engineering Scrollbar */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 4px;
+  height: 4px;
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(7, 9, 20, 0.4);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.14);
+  background: #202e2b;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(147, 102, 255, 0.5);
+  background: #33413e;
 }
 
 /* Accessible focus rings */
 :focus-visible {
-  outline: 2px solid #9366FF;
+  outline: 2px solid var(--mint);
   outline-offset: 2px;
 }
-
-/* @prefers-reduced-motion: swap movement for a fade (Principle 20) */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  ::before,
-  ::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
-}
-
-/* Shimmer keyframe for SkeletonLoader */
-@keyframes shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(200%); }
-}
-
-/* Dash animation for animated SVG edges in Universe Preview */
-@keyframes dash {
-  to { stroke-dashoffset: -100; }
-}
-

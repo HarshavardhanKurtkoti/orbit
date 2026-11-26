@@ -2,10 +2,10 @@
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, X, Loader2, CheckCircle2, ArrowRight, ChevronRight, Zap } from "lucide-react";
+import { Sparkles, X, Loader2, CheckCircle2, ArrowRight } from "lucide-react";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { api } from "@/lib/api";
-import { modalVariants, anticipationVariant } from "@/motion";
+import { modalVariants } from "@/motion";
 import { GlassButton } from "@/components/ui/GlassButton";
 
 export function AiGeneratorModal() {
@@ -63,31 +63,27 @@ export function AiGeneratorModal() {
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#080d10]/80 backdrop-blur-sm">
         <motion.div
           variants={modalVariants}
           initial="hidden"
           animate="visible"
           exit="hidden"
-          className="w-full max-w-2xl glass-elevated border border-white/[0.18] rounded-3xl shadow-2xl overflow-hidden flex flex-col relative"
+          className="w-full max-w-xl glass-elevated border border-[#202e2b] rounded-xl shadow-2xl overflow-hidden flex flex-col relative bg-[#101918]"
         >
-          {/* Top Aurora lighting strip */}
-          <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-[#9366FF]/60 to-transparent pointer-events-none" />
-          <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-80 h-32 bg-gradient-to-b from-[#9366FF]/25 to-transparent blur-3xl pointer-events-none" />
+          {/* Top highlight line */}
+          <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-[#a7f3d0]/30 to-transparent pointer-events-none" />
 
           {/* Modal Header */}
-          <div className="flex items-center justify-between px-6 py-5 border-b border-white/[0.10] relative z-10">
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <div className="p-2.5 rounded-2xl bg-gradient-to-br from-[#9366FF] to-[#38BDF8] text-white shadow-glow-violet">
-                  <Sparkles className="h-5 w-5" />
-                </div>
-                <div className="absolute -inset-0.5 rounded-2xl bg-[#9366FF]/30 blur-sm -z-10" />
+          <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#202e2b]">
+            <div className="flex items-center gap-2.5">
+              <div className="p-1.5 rounded-lg bg-[#15221e] text-[#a7f3d0] border border-[#202e2b]">
+                <Sparkles className="h-4 w-4" />
               </div>
               <div>
-                <h2 className="text-base font-bold text-white tracking-tight">AI Universe Architect</h2>
-                <p className="text-xs text-slate-400 mt-0.5 font-mono">
-                  Pydantic-validated spatial workspace generation engine
+                <h2 className="text-sm font-semibold text-[#f1f5f4] tracking-tight">AI Architect</h2>
+                <p className="text-[10px] text-[#6e807d] font-mono">
+                  Autonomous workspace planning and project decomposition
                 </p>
               </div>
             </div>
@@ -97,131 +93,124 @@ export function AiGeneratorModal() {
                 setAiModalOpen(false);
                 setGeneratedJob(null);
               }}
-              className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+              className="p-1 rounded text-[#9aaba8] hover:text-[#f1f5f4] hover:bg-[#15221e] transition-colors"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
 
           {/* Modal Body */}
-          <div className="relative z-10">
+          <div>
             {!generatedJob?.result ? (
               /* PROMPT INPUT STAGE */
-              <form onSubmit={handleGenerate} className="p-6 space-y-5">
+              <form onSubmit={handleGenerate} className="p-5 space-y-4">
                 <div>
-                  <label className="text-xs font-semibold text-slate-300 block mb-2">
-                    Describe your project vision or technical goal:
+                  <label className="text-[10px] font-mono uppercase tracking-widest text-[#6e807d] block mb-1.5">
+                    Project Vision & Technical Goal
                   </label>
                   <textarea
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
-                    placeholder="e.g. I want to build a distributed AI reasoning backend with PostgreSQL connection pooling, Redis caching, and a spatial knowledge graph interface..."
-                    className="w-full h-36 px-4 py-3 rounded-2xl bg-[#070914]/80 border border-white/[0.10] hover:border-white/20 focus:border-[#9366FF] text-xs text-white placeholder-slate-500 focus:outline-none transition-colors font-sans leading-relaxed resize-none"
+                    placeholder="Describe what you want to build (e.g. distributed cache, RAG observability pipeline, developer toolkit)..."
+                    className="w-full h-28 px-3 py-2 rounded-lg bg-[#0b1312] border border-[#202e2b] focus:border-[#a7f3d0] text-xs text-[#f1f5f4] placeholder-[#6e807d] focus:outline-none transition-colors font-sans leading-relaxed resize-none"
                   />
                 </div>
 
-                {/* Quick example prompts */}
-                <div className="space-y-2">
-                  <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">
-                    Quick start prompts:
+                {/* Example prompt pills */}
+                <div>
+                  <span className="text-[10px] font-mono text-[#6e807d] block mb-1.5">
+                    Example blueprints:
                   </span>
-                  <div className="space-y-1.5">
-                    {EXAMPLE_PROMPTS.map((ex, idx) => (
+                  <div className="space-y-1">
+                    {EXAMPLE_PROMPTS.map((ex, i) => (
                       <button
-                        key={idx}
+                        key={i}
                         type="button"
                         onClick={() => setPrompt(ex)}
-                        className="w-full text-left px-3 py-2 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.06] hover:border-[#9366FF]/30 text-xs text-slate-400 hover:text-white transition-all flex items-center gap-2 group"
+                        className="w-full text-left px-2.5 py-1.5 rounded bg-[#0b1312] border border-[#16221f] text-[11px] text-[#9aaba8] hover:text-[#f1f5f4] hover:border-[#202e2b] transition-colors truncate block"
                       >
-                        <ChevronRight className="h-3 w-3 text-[#9366FF] flex-shrink-0" />
-                        {ex}
+                        → {ex}
                       </button>
                     ))}
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-2">
-                  <span className="text-[10px] text-slate-500 font-mono flex items-center gap-1.5">
-                    <Zap className="h-3 w-3 text-[#9366FF]" />
-                    Pydantic validated • PostgreSQL materialization
+                <div className="flex items-center justify-between pt-2 border-t border-[#16221f]">
+                  <span className="text-[10px] font-mono text-[#6e807d]">
+                    Structured JSON decomposition
                   </span>
-
                   <GlassButton
                     type="submit"
                     variant="primary"
-                    size="lg"
-                    icon={isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                    size="sm"
                     disabled={isGenerating || !prompt.trim()}
+                    icon={
+                      isGenerating ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-3.5 w-3.5" />
+                      )
+                    }
                   >
-                    {isGenerating ? "Synthesizing Blueprint..." : "Generate Roadmap"}
+                    {isGenerating ? "Synthesizing..." : "Generate Plan"}
                   </GlassButton>
                 </div>
               </form>
             ) : (
-              /* BLUEPRINT PREVIEW STAGE */
-              <div className="p-6 space-y-5">
-                {/* Blueprint Summary */}
-                <div className="p-4 rounded-2xl bg-[#070914]/70 border border-[#9366FF]/30 relative overflow-hidden">
-                  <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-[#9366FF]/40 to-transparent" />
-                  <span className="text-[9px] font-mono text-purple-400 uppercase tracking-widest">GENERATED SPATIAL BLUEPRINT</span>
-                  <h3 className="text-base font-bold text-white mt-1">{generatedJob.result.title}</h3>
-                  <p className="text-xs text-slate-300 mt-1 leading-relaxed">{generatedJob.result.description}</p>
+              /* PLAN REVIEW STAGE */
+              <div className="p-5 space-y-4">
+                <div className="flex items-center gap-2 text-xs font-mono text-[#34d399] bg-[#34d399]/10 p-2.5 rounded-lg border border-[#34d399]/20">
+                  <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
+                  <span>Blueprint generated successfully. Review the proposed project breakdown.</span>
                 </div>
 
-                {/* Synthesized Projects */}
-                <div>
-                  <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest block mb-3">
-                    Synthesized Projects ({generatedJob.result.projects.length})
-                  </span>
-                  <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
-                    {generatedJob.result.projects.map((proj: any, idx: number) => (
-                      <div
-                        key={idx}
-                        className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.08] hover:border-white/15 transition-colors space-y-2.5"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-semibold text-white">{proj.title}</span>
-                          <span className={`text-[9px] font-mono uppercase px-2 py-0.5 rounded-full border ${
-                            proj.priority === "urgent"
-                              ? "text-rose-300 bg-rose-500/10 border-rose-500/20"
-                              : proj.priority === "high"
-                              ? "text-purple-300 bg-purple-500/10 border-purple-500/20"
-                              : "text-sky-300 bg-sky-500/10 border-sky-500/20"
-                          }`}>
-                            {proj.priority}
+                <div className="max-h-60 overflow-y-auto space-y-2.5 pr-1">
+                  <div className="p-3 rounded-lg bg-[#0b1312] border border-[#202e2b]">
+                    <h3 className="text-xs font-semibold text-[#f1f5f4]">
+                      {generatedJob.result.project?.title || "Proposed Project"}
+                    </h3>
+                    <p className="text-[11px] text-[#9aaba8] mt-1 leading-relaxed">
+                      {generatedJob.result.project?.description}
+                    </p>
+                  </div>
+
+                  {generatedJob.result.tasks && (
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-mono uppercase tracking-widest text-[#6e807d]">
+                        Proposed Tasks ({generatedJob.result.tasks.length})
+                      </span>
+                      {generatedJob.result.tasks.slice(0, 5).map((t: any, i: number) => (
+                        <div
+                          key={i}
+                          className="px-2.5 py-1.5 rounded bg-[#0b1312] border border-[#16221f] text-xs text-[#d6dedc] flex items-center justify-between"
+                        >
+                          <span className="truncate">{t.title}</span>
+                          <span className="text-[9px] font-mono uppercase text-[#a7f3d0]">
+                            {t.priority}
                           </span>
                         </div>
-                        <p className="text-xs text-slate-400 leading-relaxed">{proj.description}</p>
-                        <div className="space-y-1.5">
-                          {proj.tasks.map((task: any, tIdx: number) => (
-                            <div key={tIdx} className="text-[11px] text-slate-300 flex items-center gap-2 font-mono">
-                              <span className="w-1.5 h-1.5 rounded-full bg-[#9366FF] flex-shrink-0" />
-                              <span>{task.title}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
-                {/* Confirmation Actions */}
-                <div className="flex items-center justify-between pt-3 border-t border-white/[0.08]">
+                <div className="flex items-center justify-between pt-3 border-t border-[#16221f]">
                   <button
+                    type="button"
                     onClick={() => setGeneratedJob(null)}
-                    className="px-4 py-2 rounded-xl text-xs text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
+                    className="text-xs font-mono text-[#9aaba8] hover:text-[#f1f5f4]"
                   >
-                    ← Back to prompt
+                    Back to edit
                   </button>
-
                   <GlassButton
+                    type="button"
                     variant="primary"
-                    size="lg"
-                    icon={isConfirming ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                    onClick={handleConfirm}
+                    size="sm"
                     disabled={isConfirming}
+                    onClick={handleConfirm}
+                    icon={<ArrowRight className="h-3.5 w-3.5" />}
                   >
-                    {isConfirming ? "Materializing..." : "Materialize Into Universe"}
+                    {isConfirming ? "Materializing..." : "Apply to Workspace"}
                   </GlassButton>
                 </div>
               </div>
