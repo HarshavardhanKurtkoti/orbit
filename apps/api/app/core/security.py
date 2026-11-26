@@ -46,7 +46,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 def get_password_hash(password: str) -> str:
-    salt = bcrypt.gensalt()
+    salt = bcrypt.gensalt(rounds=10)
     return bcrypt.hashpw(password.encode("utf-8")[:72], salt).decode("utf-8")
 
 
@@ -102,9 +102,10 @@ async def get_current_user_optional(
         return None
     try:
         payload = decode_token(token)
-        user_id: str = payload.get("sub")
-        if user_id is None:
+        raw_sub = payload.get("sub")
+        if not raw_sub or not isinstance(raw_sub, str):
             return None
+        user_id: str = raw_sub
     except jwt.PyJWTError:
         return None
         
@@ -127,10 +128,11 @@ async def get_current_user(
         raise credentials_exception
     try:
         payload = decode_token(token)
-        user_id: str = payload.get("sub")
-        token_type: str = payload.get("type", "access")
-        if user_id is None or token_type != "access":
+        raw_sub = payload.get("sub")
+        token_type = payload.get("type", "access")
+        if not raw_sub or not isinstance(raw_sub, str) or token_type != "access":
             raise credentials_exception
+        user_id: str = raw_sub
     except jwt.PyJWTError:
         raise credentials_exception
         
@@ -170,25 +172,25 @@ async def verify_workspace_access(
     workspace_id: str,
     user_id: str,
     db: AsyncSession
-):
+) -> bool:
     now = time.time()
     cache_key = (workspace_id, user_id)
     cached = _WORKSPACE_ACCESS_CACHE.get(cache_key)
     if cached and (now - cached[0] < CACHE_TTL):
-        return cached[1]
+        return True
 
     from app.models.workspace import Workspace, WorkspaceMember
     query = (
-        select(Workspace)
+        select(Workspace.id)
         .join(WorkspaceMember, Workspace.id == WorkspaceMember.workspace_id)
         .where(Workspace.id == workspace_id, WorkspaceMember.user_id == user_id)
     )
     result = await db.execute(query)
-    workspace = result.scalar_one_or_none()
-    if not workspace:
+    found_id = result.scalar_one_or_none()
+    if not found_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access denied: You do not have access to this workspace",
         )
-    _WORKSPACE_ACCESS_CACHE[cache_key] = (now, workspace)
-    return workspace
+    _WORKSPACE_ACCESS_CACHE[cache_key] = (now, True)
+    return True

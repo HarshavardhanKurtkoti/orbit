@@ -1,3 +1,4 @@
+import time
 from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,6 +14,7 @@ from app.core.security import (
     get_password_hash,
     verify_password,
     get_current_user,
+    _USER_CACHE,
 )
 from app.models.user import User
 from app.models.workspace import Workspace, WorkspaceMember
@@ -71,7 +73,8 @@ async def register(user_in: UserRegister, db: AsyncSession = Depends(get_db)):
     user.refresh_token = refresh_token
 
     await db.commit()
-    await db.refresh(user)
+    import time
+    _USER_CACHE[user.id] = (time.time(), user)
 
     return Token(
         access_token=access_token,
@@ -103,7 +106,8 @@ async def login(credentials: UserLogin, db: AsyncSession = Depends(get_db)):
     refresh_token = create_refresh_token(subject=user.id, extra_claims=extra)
     user.refresh_token = refresh_token
     await db.commit()
-    await db.refresh(user)
+    import time
+    _USER_CACHE[user.id] = (time.time(), user)
 
     return Token(
         access_token=access_token,
@@ -157,7 +161,7 @@ async def demo_login(db: AsyncSession = Depends(get_db)):
     refresh_token = create_refresh_token(subject=user.id, extra_claims=extra)
     user.refresh_token = refresh_token
     await db.commit()
-    await db.refresh(user)
+    _USER_CACHE[user.id] = (time.time(), user)
 
     return Token(
         access_token=access_token,
@@ -199,7 +203,7 @@ async def refresh_token(payload: RefreshTokenRequest, db: AsyncSession = Depends
     new_refresh = create_refresh_token(subject=user.id, extra_claims=extra)
     user.refresh_token = new_refresh
     await db.commit()
-    await db.refresh(user)
+    _USER_CACHE[user.id] = (time.time(), user)
 
     return Token(
         access_token=new_access,

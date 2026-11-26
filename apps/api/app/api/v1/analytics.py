@@ -36,23 +36,20 @@ async def get_overview(
     completed_tasks = task_counts.get("done", 0)
     completion_rate = (completed_tasks / total_tasks * 100.0) if total_tasks > 0 else 0.0
 
-    # Active projects
-    proj_query = select(func.count(Project.id)).where(Project.workspace_id == workspace_id)
-    active_projects = (await db.execute(proj_query)).scalar() or 0
-
-    # Active goals
-    goals_query = select(func.count(Goal.id)).where(Goal.workspace_id == workspace_id)
-    active_goals = (await db.execute(goals_query)).scalar() or 0
-
-    # Notes
-    notes_query = select(func.count(Note.id)).where(Note.workspace_id == workspace_id)
-    total_notes = (await db.execute(notes_query)).scalar() or 0
-
-    # Graph nodes & edges
-    nodes_query = select(func.count(GraphNode.id)).where(GraphNode.workspace_id == workspace_id)
-    edges_query = select(func.count(GraphEdge.id)).where(GraphEdge.workspace_id == workspace_id)
-    node_count = (await db.execute(nodes_query)).scalar() or 0
-    edge_count = (await db.execute(edges_query)).scalar() or 0
+    # Combine all entity counts into a single consolidated query to avoid 5 separate network round trips
+    counts_query = select(
+        select(func.count(Project.id)).where(Project.workspace_id == workspace_id).scalar_subquery(),
+        select(func.count(Goal.id)).where(Goal.workspace_id == workspace_id).scalar_subquery(),
+        select(func.count(Note.id)).where(Note.workspace_id == workspace_id).scalar_subquery(),
+        select(func.count(GraphNode.id)).where(GraphNode.workspace_id == workspace_id).scalar_subquery(),
+        select(func.count(GraphEdge.id)).where(GraphEdge.workspace_id == workspace_id).scalar_subquery(),
+    )
+    counts_row = (await db.execute(counts_query)).one()
+    active_projects = counts_row[0] or 0
+    active_goals = counts_row[1] or 0
+    total_notes = counts_row[2] or 0
+    node_count = counts_row[3] or 0
+    edge_count = counts_row[4] or 0
 
     return ProductivityOverviewResponse(
         total_tasks=total_tasks,

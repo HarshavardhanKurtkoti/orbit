@@ -59,7 +59,11 @@ async def get_workspace(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    workspace = await verify_workspace_access(workspace_id, current_user.id, db)
+    await verify_workspace_access(workspace_id, current_user.id, db)
+    result = await db.execute(select(Workspace).where(Workspace.id == workspace_id))
+    workspace = result.scalar_one_or_none()
+    if not workspace:
+        raise HTTPException(status_code=404, detail="Workspace not found")
     return WorkspaceResponse.model_validate(workspace)
 
 
@@ -70,7 +74,11 @@ async def update_workspace(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    workspace = await verify_workspace_access(workspace_id, current_user.id, db)
+    await verify_workspace_access(workspace_id, current_user.id, db)
+    result = await db.execute(select(Workspace).where(Workspace.id == workspace_id))
+    workspace = result.scalar_one_or_none()
+    if not workspace:
+        raise HTTPException(status_code=404, detail="Workspace not found")
         
     update_data = workspace_in.model_dump(exclude_unset=True)
     for field, value in update_data.items():
