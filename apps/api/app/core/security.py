@@ -134,3 +134,24 @@ async def require_admin(
             detail="Admin privileges required"
         )
     return current_user
+
+
+async def verify_workspace_access(
+    workspace_id: str,
+    user_id: str,
+    db: AsyncSession
+):
+    from app.models.workspace import Workspace, WorkspaceMember
+    query = (
+        select(Workspace)
+        .join(WorkspaceMember, Workspace.id == WorkspaceMember.workspace_id)
+        .where(Workspace.id == workspace_id, WorkspaceMember.user_id == user_id)
+    )
+    result = await db.execute(query)
+    workspace = result.scalar_one_or_none()
+    if not workspace:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied: You do not have access to this workspace",
+        )
+    return workspace

@@ -139,6 +139,26 @@ export function Shell({ children, activeTab: propTab }: ShellProps) {
     }
   };
 
+  const userRole = currentUser?.role;
+  const isPrivileged = userRole === "admin" || userRole === "owner";
+
+  // RBAC: "Users & Access" is strictly restricted to owner and admin (hidden from member)
+  const visibleNavItems = useMemo(() => {
+    return NAV_ITEMS.filter((item) => {
+      if (item.id === "users") {
+        return isPrivileged;
+      }
+      return true;
+    });
+  }, [isPrivileged]);
+
+  // If a non-privileged member tries to visit /users, redirect them to /
+  useEffect(() => {
+    if (activeTab === "users" && currentUser && !isPrivileged) {
+      router.replace("/");
+    }
+  }, [activeTab, currentUser, isPrivileged, router]);
+
   // Global Ctrl+K / Cmd+K listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -234,7 +254,7 @@ export function Shell({ children, activeTab: propTab }: ShellProps) {
                     Navigation
                   </span>
                 </div>
-                {NAV_ITEMS.map((item) => {
+                {visibleNavItems.map((item) => {
                   const Icon = item.icon;
                   const isActive = activeTab === item.id;
                   return (

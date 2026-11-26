@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.database import get_db
-from app.core.security import get_current_user
+from app.core.security import get_current_user, verify_workspace_access
 from app.models.user import User
 from app.models.graph import GraphNode, GraphEdge
 from app.schemas.graph import (
@@ -23,6 +23,7 @@ async def get_workspace_graph(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    await verify_workspace_access(workspace_id, current_user.id, db)
     nodes_res = await db.execute(select(GraphNode).where(GraphNode.workspace_id == workspace_id))
     edges_res = await db.execute(select(GraphEdge).where(GraphEdge.workspace_id == workspace_id))
     

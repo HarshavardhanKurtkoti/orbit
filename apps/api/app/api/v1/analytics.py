@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
 from app.core.database import get_db
-from app.core.security import get_current_user
+from app.core.security import get_current_user, verify_workspace_access
 from app.models.user import User
 from app.models.project import Project
 from app.models.task import Task
@@ -21,6 +21,7 @@ async def get_overview(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    await verify_workspace_access(workspace_id, current_user.id, db)
     # Total & completed tasks for this workspace
     tasks_query = (
         select(Task.status, func.count(Task.id))

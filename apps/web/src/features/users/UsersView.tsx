@@ -201,6 +201,36 @@ export function UsersView() {
   const adminCount = users.filter((u) => u.role === "admin" || u.role === "owner").length;
   const activeCount = users.filter((u) => u.status === "active").length;
 
+  if (decodedClaims && decodedClaims.role !== "admin" && decodedClaims.role !== "owner") {
+    return (
+      <div className="h-full flex flex-col items-center justify-center p-6 text-center">
+        <GlassPanel elevation="standard" className="p-8 max-w-md space-y-4 bg-[#101918] border border-[#202e2b] rounded-2xl">
+          <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center mx-auto">
+            <Shield className="h-6 w-6" />
+          </div>
+          <div className="space-y-1.5">
+            <h2 className="text-base font-medium text-[#f1f5f4]">Access Restricted</h2>
+            <p className="text-xs text-[#9aaba8] leading-relaxed">
+              Users & Access management requires Administrator or Owner privileges. Standard members cannot view or manage workspace members or system tokens.
+            </p>
+          </div>
+          <div className="pt-2">
+            <GlassButton
+              variant="primary"
+              size="sm"
+              className="w-full justify-center"
+              onClick={() => {
+                if (typeof window !== "undefined") window.location.href = "/";
+              }}
+            >
+              Return to Overview
+            </GlassButton>
+          </div>
+        </GlassPanel>
+      </div>
+    );
+  }
+
   return (
     <div className="h-full flex flex-col p-6 space-y-6 overflow-y-auto">
       {/* 1. HEADER */}
