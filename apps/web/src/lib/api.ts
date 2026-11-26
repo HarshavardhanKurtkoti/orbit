@@ -511,11 +511,33 @@ class ApiClient {
       }
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: "Request failed" }));
-        throw new Error(errorData.detail || `HTTP Error ${response.status}`);
+        let errorDetail = `HTTP Error ${response.status}`;
+        try {
+          const errorText = await response.text();
+          if (errorText) {
+            const parsed = JSON.parse(errorText);
+            errorDetail = parsed.detail || parsed.message || errorDetail;
+          }
+        } catch {
+          // ignore parsing error
+        }
+        throw new Error(errorDetail);
       }
 
-      return response.json();
+      if (response.status === 204) {
+        return null as unknown as T;
+      }
+
+      const text = await response.text();
+      if (!text || !text.trim()) {
+        return null as unknown as T;
+      }
+
+      try {
+        return JSON.parse(text) as T;
+      } catch {
+        return text as unknown as T;
+      }
     } catch (err: any) {
       clearTimeout(timeoutId);
       throw err;

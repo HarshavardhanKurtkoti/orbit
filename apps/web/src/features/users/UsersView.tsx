@@ -74,6 +74,11 @@ export function UsersView() {
   const [createError, setCreateError] = useState<string | null>(null);
   const [createSubmitting, setCreateSubmitting] = useState<boolean>(false);
 
+  // In-house delete confirmation modal state
+  const [userToDelete, setUserToDelete] = useState<UserItem | null>(null);
+  const [deleteSubmitting, setDeleteSubmitting] = useState<boolean>(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
   // Load session tokens & users list
   useEffect(() => {
     loadSession();
@@ -184,21 +189,25 @@ export function UsersView() {
     }
   };
 
-  const handleDeleteUser = async (user: UserItem) => {
-    if (!confirm(`Are you sure you want to remove user "${user.display_name}" (${user.email})?`)) {
-      return;
-    }
+  const handleConfirmDelete = async () => {
+    if (!userToDelete) return;
+    setDeleteSubmitting(true);
+    setDeleteError(null);
     try {
-      await api.deleteUser(user.id);
-      setUsers((prev) => prev.filter((u) => u.id !== user.id));
+      await api.deleteUser(userToDelete.id);
+      setUsers((prev) => prev.filter((u) => u.id !== userToDelete.id));
+      setUserToDelete(null);
     } catch (err: any) {
       // If the user was already deleted on the server (404), remove stale row from view
       if (err.message && (err.message.includes("404") || err.message.toLowerCase().includes("not found"))) {
-        setUsers((prev) => prev.filter((u) => u.id !== user.id));
+        setUsers((prev) => prev.filter((u) => u.id !== userToDelete.id));
         fetchUsers();
+        setUserToDelete(null);
       } else {
-        alert(err.message || "Failed to delete user");
+        setDeleteError(err.message || "Failed to remove user");
       }
+    } finally {
+      setDeleteSubmitting(false);
     }
   };
 
@@ -590,7 +599,10 @@ export function UsersView() {
                             {isSuspended ? <UserCheck className="h-3.5 w-3.5" /> : <UserX className="h-3.5 w-3.5" />}
                           </button>
                           <button
-                            onClick={() => handleDeleteUser(u)}
+                            onClick={() => {
+                              setUserToDelete(u);
+                              setDeleteError(null);
+                            }}
                             className="p-1.5 rounded hover:bg-rose-500/20 text-[#6e807d] hover:text-rose-400 transition-colors"
                             title="Remove User"
                           >
@@ -727,6 +739,85 @@ export function UsersView() {
                   </GlassButton>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* 6. IN-HOUSE CONFIRM DELETE MODAL */}
+      <AnimatePresence>
+        {userToDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ duration: 0.15, ease: "easeOut" }}
+              className="w-full max-w-md p-6 rounded-2xl glass-elevated border border-[#202e2b] bg-[#101918] shadow-2xl space-y-4"
+            >
+              <div className="flex items-center justify-between border-b border-[#202e2b] pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center">
+                    <Trash2 className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-[#f1f5f4]">Remove User Access</h3>
+                    <p className="text-[11px] text-[#6e807d]">Revoke account permissions and session</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setUserToDelete(null);
+                    setDeleteError(null);
+                  }}
+                  className="p-1 rounded text-[#6e807d] hover:text-[#f1f5f4]"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              {deleteError && (
+                <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-xs text-rose-300">
+                  {deleteError}
+                </div>
+              )}
+
+              <div className="p-3.5 rounded-xl bg-[#0b1312] border border-[#202e2b] space-y-2">
+                <p className="text-xs text-[#d6dedc] leading-relaxed">
+                  Are you sure you want to remove <span className="text-[#f1f5f4] font-medium">&quot;{userToDelete.display_name}&quot;</span>?
+                </p>
+                <div className="flex items-center gap-2 text-[11px] font-mono text-[#9aaba8]">
+                  <Mail className="h-3 w-3 text-[#6e807d]" />
+                  <span>{userToDelete.email}</span>
+                </div>
+                <p className="text-[11px] text-[#6e807d] pt-1 leading-relaxed">
+                  This action will invalidate all associated JWT tokens, revoke workspace memberships, and cannot be undone.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <GlassButton
+                  type="button"
+                  variant="subtle"
+                  size="sm"
+                  onClick={() => {
+                    setUserToDelete(null);
+                    setDeleteError(null);
+                  }}
+                  disabled={deleteSubmitting}
+                >
+                  Cancel
+                </GlassButton>
+                <GlassButton
+                  type="button"
+                  variant="danger"
+                  size="sm"
+                  onClick={handleConfirmDelete}
+                  disabled={deleteSubmitting}
+                >
+                  {deleteSubmitting ? "Removing..." : "Remove User"}
+                </GlassButton>
+              </div>
             </motion.div>
           </div>
         )}
