@@ -111,36 +111,47 @@ export function UniverseCanvas({ viewMode = "spatial" }: UniverseCanvasProps) {
     []
   );
 
+  const currentWsRef = useRef(wsId);
+
   // Sync with store updates smoothly in background
   useEffect(() => {
+    const isNewWs = wsId !== currentWsRef.current;
+    if (isNewWs) {
+      currentWsRef.current = wsId;
+    }
+
     if (graphNodes.length > 0) {
       const { mappedNodes, mappedEdges } = mapGraphToFlow(graphNodes, graphEdges, wsId);
-      // Preserve local positions if node is currently being dragged
-      setNodes((prevNodes) => {
-        if (prevNodes.length === 0) return mappedNodes;
-        const prevMap = new Map(prevNodes.map((n) => [n.id, n]));
-        return mappedNodes.map((n) => {
-          const existing = prevMap.get(n.id);
-          if (existing && existing.position) {
-            return {
-              ...n,
-              position: existing.position,
-              data: { ...n.data, ...existing.data },
-            };
-          }
-          return n;
+      if (isNewWs) {
+        setNodes(mappedNodes);
+      } else {
+        // Preserve local positions if node is currently being dragged
+        setNodes((prevNodes) => {
+          if (prevNodes.length === 0) return mappedNodes;
+          const prevMap = new Map(prevNodes.map((n) => [n.id, n]));
+          return mappedNodes.map((n) => {
+            const existing = prevMap.get(n.id);
+            if (existing && existing.position) {
+              return {
+                ...n,
+                position: existing.position,
+                data: { ...n.data, ...existing.data },
+              };
+            }
+            return n;
+          });
         });
-      });
+      }
       setEdges(mappedEdges);
+    } else if (isNewWs) {
+      setNodes([]);
+      setEdges([]);
     }
   }, [graphNodes, graphEdges, wsId]);
 
-  // Background revalidation on mount
+  // Background revalidation on mount and workspace change
   useEffect(() => {
-    if (!hasInitializedRef.current) {
-      hasInitializedRef.current = true;
-      revalidateGraph(wsId);
-    }
+    revalidateGraph(wsId);
   }, [wsId, revalidateGraph]);
 
   const onNodesChange: OnNodesChange = useCallback(

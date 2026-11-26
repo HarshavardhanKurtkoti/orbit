@@ -31,6 +31,7 @@ import { UsersView } from "@/features/users/UsersView";
 import { AiGeneratorModal } from "@/features/ai/AiGeneratorModal";
 import { AmbientBackground } from "@/components/ui/AmbientBackground";
 import { GlassButton } from "@/components/ui/GlassButton";
+import { WorkspaceSelector } from "@/components/layout/WorkspaceSelector";
 
 interface NavItemConfig {
   id: NavTab;
@@ -115,8 +116,10 @@ export function Shell({ children, activeTab: propTab }: ShellProps) {
         const wsList = await api.listWorkspaces();
         if (wsList && wsList.length > 0) {
           setWorkspaces(wsList);
-          setCurrentWorkspace(wsList[0]);
-          loadWorkspaceData(wsList[0].id);
+          const savedWsId = typeof window !== "undefined" ? localStorage.getItem("orbit_active_workspace_id") : null;
+          const activeWs = wsList.find((w: any) => w.id === savedWsId) || wsList[0];
+          setCurrentWorkspace(activeWs);
+          loadWorkspaceData(activeWs.id);
         }
       } catch (err: any) {
         console.warn("Workspace init warning:", err);
@@ -205,7 +208,7 @@ export function Shell({ children, activeTab: propTab }: ShellProps) {
           <div className="h-full w-full rounded-xl glass-standard border-[#202e2b] flex flex-col justify-between p-3 relative overflow-hidden bg-[#101918]/90">
             <div>
               {/* ORBIT BRANDING */}
-              <div className="flex items-center justify-between px-2 py-2 mb-3">
+              <div className="flex items-center justify-between px-2 py-1.5 mb-2">
                 <Link href="/" className="flex items-center gap-2.5 group">
                   <div className="h-7 w-7 rounded-lg bg-[#15221e] border border-[#202e2b] flex items-center justify-center text-[#a7f3d0] group-hover:border-[#a7f3d0]/40 transition-colors">
                     <Compass className="h-4 w-4" />
@@ -214,9 +217,8 @@ export function Shell({ children, activeTab: propTab }: ShellProps) {
                     <div className="font-semibold text-sm tracking-tight text-[#f1f5f4] flex items-center gap-1.5 font-sans group-hover:text-[#a7f3d0] transition-colors">
                       Orbit<span className="text-[#a7f3d0]">.</span>
                     </div>
-                    <div className="text-[10px] text-[#9aaba8] font-mono tracking-tight flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#34d399]" />
-                      <span>Workspace</span>
+                    <div className="text-[10px] text-[#6e807d] font-mono tracking-tight">
+                      Spatial OS
                     </div>
                   </div>
                 </Link>
@@ -229,6 +231,11 @@ export function Shell({ children, activeTab: propTab }: ShellProps) {
                 >
                   <X className="h-4 w-4" />
                 </button>
+              </div>
+
+              {/* INTERACTIVE WORKSPACE SELECTOR */}
+              <div className="mb-3">
+                <WorkspaceSelector />
               </div>
 
               {/* GLOBAL SEARCH / COMMAND PALETTE TRIGGER */}

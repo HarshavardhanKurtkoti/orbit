@@ -41,16 +41,18 @@ export function TasksView() {
 
   // Sync with store updates
   useEffect(() => {
-    if (storeTasks && storeTasks.length > 0) {
-      setTasks(storeTasks);
-      setLoading(false);
-    }
+    setTasks(storeTasks || []);
+    setLoading(false);
   }, [storeTasks]);
 
   useEffect(() => {
+    setProjects(storeProjects || []);
     if (storeProjects && storeProjects.length > 0) {
-      setProjects(storeProjects);
-      if (!selectedProjectId) setSelectedProjectId(storeProjects[0].id);
+      if (!selectedProjectId || !storeProjects.some((p: any) => p.id === selectedProjectId)) {
+        setSelectedProjectId(storeProjects[0].id);
+      }
+    } else {
+      setSelectedProjectId("");
     }
   }, [storeProjects, selectedProjectId]);
 
@@ -58,16 +60,20 @@ export function TasksView() {
     if (!currentWorkspace?.id) return;
     async function fetchTasks() {
       try {
-        if (tasks.length === 0) setLoading(true);
+        setLoading(true);
         const [taskData, projData] = await Promise.all([
           api.listTasks(currentWorkspace.id),
           api.listProjects(currentWorkspace.id),
         ]);
-        setTasks(taskData);
-        setProjects(projData);
-        setStoreTasks(taskData);
-        setStoreProjects(projData);
-        if (projData.length > 0) setSelectedProjectId(projData[0].id);
+        setTasks(taskData || []);
+        setProjects(projData || []);
+        setStoreTasks(taskData || []);
+        setStoreProjects(projData || []);
+        if (projData && projData.length > 0) {
+          setSelectedProjectId(projData[0].id);
+        } else {
+          setSelectedProjectId("");
+        }
       } catch (err) {
         console.error("Tasks fetch error:", err);
       } finally {
@@ -75,7 +81,7 @@ export function TasksView() {
       }
     }
     fetchTasks();
-  }, [currentWorkspace?.id, setStoreTasks, setStoreProjects, tasks.length]);
+  }, [currentWorkspace?.id, setStoreTasks, setStoreProjects]);
 
   const handleCreateTask = async (e?: React.FormEvent, laneStatus: string = "todo") => {
     if (e) e.preventDefault();

@@ -84,8 +84,17 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   isSyncing: false,
 
   setCurrentWorkspace: (workspace) => {
-    set({ currentWorkspace: workspace });
+    set({
+      currentWorkspace: workspace,
+      selectedEntity: null,
+      isInspectorOpen: false,
+    });
     if (workspace?.id) {
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem("orbit_active_workspace_id", workspace.id);
+        } catch {}
+      }
       get().loadWorkspaceData(workspace.id);
     }
   },
@@ -158,7 +167,6 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
   loadWorkspaceData: async (workspaceId?: string) => {
     const wsId = workspaceId || get().currentWorkspace?.id || "ws_prime";
-    if (get().isSyncing) return;
     try {
       set({ isSyncing: true });
       const [projData, taskData, noteData, analyticsData, graphData] = await Promise.all([
@@ -170,12 +178,12 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       ]);
 
       set({
-        projects: projData,
-        tasks: taskData,
-        notes: noteData,
+        projects: projData || [],
+        tasks: taskData || [],
+        notes: noteData || [],
         analytics: analyticsData,
-        graphNodes: graphData.nodes || [],
-        graphEdges: graphData.edges || [],
+        graphNodes: graphData?.nodes || [],
+        graphEdges: graphData?.edges || [],
         isDataLoaded: true,
         isGraphLoaded: true,
         isSyncing: false,

@@ -29,13 +29,17 @@ export function NotesView() {
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
+    setNotes(storeNotes || []);
     if (storeNotes && storeNotes.length > 0) {
-      setNotes(storeNotes);
-      if (!selectedNote) {
+      if (!selectedNote || !storeNotes.some((n: any) => n.id === selectedNote.id)) {
         setSelectedNote(storeNotes[0]);
         setTitle(storeNotes[0].title);
         setContent(storeNotes[0].content);
       }
+    } else {
+      setSelectedNote(null);
+      setTitle("");
+      setContent("");
     }
   }, [storeNotes, selectedNote]);
 
@@ -44,19 +48,24 @@ export function NotesView() {
     async function fetchNotes() {
       try {
         const data = await api.listNotes(currentWorkspace.id);
-        setNotes(data);
-        setStoreNotes(data);
-        if (data.length > 0 && !selectedNote) {
-          setSelectedNote(data[0]);
-          setTitle(data[0].title);
-          setContent(data[0].content);
+        const safeData = data || [];
+        setNotes(safeData);
+        setStoreNotes(safeData);
+        if (safeData.length > 0) {
+          setSelectedNote(safeData[0]);
+          setTitle(safeData[0].title);
+          setContent(safeData[0].content);
+        } else {
+          setSelectedNote(null);
+          setTitle("");
+          setContent("");
         }
       } catch (err) {
         console.error("Notes load error:", err);
       }
     }
     fetchNotes();
-  }, [currentWorkspace?.id, setStoreNotes, selectedNote]);
+  }, [currentWorkspace?.id, setStoreNotes]);
 
   const handleSelectNote = (note: any) => {
     setSelectedNote(note);

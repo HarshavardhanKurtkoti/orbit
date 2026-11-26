@@ -97,12 +97,8 @@ async def confirm_ai_job(
     result = await db.execute(select(AiGenerationJob).where(AiGenerationJob.id == job_id))
     job = result.scalar_one_or_none()
     
-    workspace_id = None
-    if job:
-        workspace_id = job.workspace_id
-    elif confirm_in.workspace_id:
-        workspace_id = confirm_in.workspace_id
-    else:
+    workspace_id = confirm_in.workspace_id or (job.workspace_id if job else None)
+    if not workspace_id:
         ws_res = await db.execute(select(Workspace).where(Workspace.owner_id == current_user.id).limit(1))
         ws = ws_res.scalar_one_or_none()
         if ws:

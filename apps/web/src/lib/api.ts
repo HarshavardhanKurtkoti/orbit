@@ -775,10 +775,58 @@ class ApiClient {
   // Workspaces
   async listWorkspaces() {
     try {
-      return await this.request<any[]>("/workspaces");
+      const res = await this.request<any[]>("/workspaces");
+      if (Array.isArray(res) && res.length > 0) {
+        this.localState.workspaces = res;
+      }
+      return res;
     } catch {
       return this.localState.workspaces;
     }
+  }
+
+  async createWorkspace(data: { name: string; description?: string; settings?: any }) {
+    try {
+      const res = await this.request<any>("/workspaces", {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+      if (res && res.id) {
+        this.localState.workspaces = [res, ...this.localState.workspaces.filter((w: any) => w.id !== res.id)];
+      }
+      return res;
+    } catch (err) {
+      console.warn("createWorkspace remote failed, using localState fallback:", err);
+      const fallback = {
+        id: `ws_${Date.now()}`,
+        name: data.name,
+        description: data.description || "",
+        settings: data.settings || {},
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      this.localState.workspaces.unshift(fallback);
+      return fallback;
+    }
+  }
+
+  async updateWorkspace(workspaceId: string, data: any) {
+    const res = await this.request<any>(`/workspaces/${workspaceId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+    if (res && res.id) {
+      this.localState.workspaces = this.localState.workspaces.map((w: any) => w.id === res.id ? { ...w, ...res } : w);
+    }
+    return res;
+  }
+
+  async deleteWorkspace(workspaceId: string) {
+    const res = await this.request<any>(`/workspaces/${workspaceId}`, {
+      method: "DELETE",
+    });
+    this.localState.workspaces = this.localState.workspaces.filter((w: any) => w.id !== workspaceId);
+    return res;
   }
 
   // Projects
