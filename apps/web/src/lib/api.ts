@@ -1070,16 +1070,21 @@ class ApiClient {
               ],
             },
           ],
+          milestones: [
+            { title: "Subsystem Specifications Approved", target_week: 1 },
+            { title: "Spatial Graph Binding Operational", target_week: 2 },
+            { title: "Production Verification Complete", target_week: 3 },
+          ],
         },
       };
     }
   }
 
-  async confirmAiJob(jobId: string, plan: any) {
+  async confirmAiJob(jobId: string, plan: any, workspaceId?: string) {
     try {
       return await this.request<any>(`/ai/jobs/${jobId}/confirm`, {
         method: "POST",
-        body: JSON.stringify({ plan }),
+        body: JSON.stringify({ plan, workspace_id: workspaceId }),
       });
     } catch {
       if (plan && plan.projects) {

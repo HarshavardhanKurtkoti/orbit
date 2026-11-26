@@ -42,7 +42,7 @@ export function AiGeneratorModal() {
     if (!generatedJob?.id || !generatedJob?.result) return;
     try {
       setIsConfirming(true);
-      await api.confirmAiJob(generatedJob.id, generatedJob.result);
+      await api.confirmAiJob(generatedJob.id, generatedJob.result, currentWorkspace?.id);
       setAiModalOpen(false);
       setGeneratedJob(null);
       setPrompt("");
