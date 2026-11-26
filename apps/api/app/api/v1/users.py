@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_
 
 from app.core.database import get_db
-from app.core.security import get_current_user, require_admin, get_password_hash
+from app.core.security import get_current_user, require_admin, get_password_hash, invalidate_user_cache
 from app.models.user import User
 from app.models.workspace import Workspace, WorkspaceMember
 from app.schemas.auth import (
@@ -168,6 +168,7 @@ async def update_user(
 
     await db.commit()
     await db.refresh(user)
+    invalidate_user_cache(user.id)
 
     return UserResponse.model_validate(user)
 
@@ -194,4 +195,5 @@ async def delete_user(
 
     await db.delete(user)
     await db.commit()
+    invalidate_user_cache(user_id)
     return None

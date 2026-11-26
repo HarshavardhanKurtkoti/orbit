@@ -473,75 +473,119 @@ class ApiClient {
     return this.localState.workspaces || [];
   }
 
-  private async request<T>(endpoint: string, options: RequestInit = {}, isRetry: boolean = false): Promise<T> {
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-      ...(options.headers as Record<string, string>),
-    };
+  // High-performance request deduping and short-lived in-flight cache
+  private inFlightRequests = new Map<string, Promise<any>>();
+  private responseCache = new Map<string, { timestamp: number; data: any }>();
+  private cacheTtlMs = 2500;
 
-    const token = this.getToken();
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
+  private async request<T>(endpoint: string, options: RequestInit = {}, isRetry: boolean = false): Promise<T> {
+    const method = (options.method || "GET").toUpperCase();
+    const isGet = method === "GET";
+    const cacheKey = `${endpoint}`;
+
+    // On mutations, bust the cache so following reads immediately fetch fresh database records
+    if (!isGet) {
+      this.responseCache.clear();
+    } else if (!isRetry) {
+      // 1. In-flight promise deduplication: share the active promise across simultaneous callers
+      const existingPromise = this.inFlightRequests.get(cacheKey);
+      if (existingPromise) {
+        return existingPromise;
+      }
+
+      // 2. Short-lived SWR cache: return immediately if fetched within the last 2.5 seconds
+      const cached = this.responseCache.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < this.cacheTtlMs) {
+        return cached.data;
+      }
     }
 
-    const isAi = endpoint.startsWith("/ai");
-    const timeoutMs = isAi ? 60000 : 15000;
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    const executeRequest = async (): Promise<T> => {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        ...(options.headers as Record<string, string>),
+      };
 
-    try {
-      const response = await fetch(`${API_BASE}${endpoint}`, {
-        ...options,
-        headers,
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-
-      // Handle 401 Unauthorized with automatic refresh token rotation
-      if (response.status === 401 && !isRetry && !endpoint.includes("/auth/refresh") && this.refreshToken) {
-        try {
-          const refreshed = await this.refreshSession();
-          if (refreshed?.access_token) {
-            return this.request<T>(endpoint, options, true);
-          }
-        } catch {
-          // Token refresh failed, continue to throw original error
-        }
+      const token = this.getToken();
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
       }
 
-      if (!response.ok) {
-        let errorDetail = `HTTP Error ${response.status}`;
-        try {
-          const errorText = await response.text();
-          if (errorText) {
-            const parsed = JSON.parse(errorText);
-            errorDetail = parsed.detail || parsed.message || errorDetail;
-          }
-        } catch {
-          // ignore parsing error
-        }
-        throw new Error(errorDetail);
-      }
-
-      if (response.status === 204) {
-        return null as unknown as T;
-      }
-
-      const text = await response.text();
-      if (!text || !text.trim()) {
-        return null as unknown as T;
-      }
+      const isAi = endpoint.startsWith("/ai");
+      const timeoutMs = isAi ? 60000 : 15000;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
       try {
-        return JSON.parse(text) as T;
-      } catch {
-        return text as unknown as T;
+        const response = await fetch(`${API_BASE}${endpoint}`, {
+          ...options,
+          headers,
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        // Handle 401 Unauthorized with automatic refresh token rotation
+        if (response.status === 401 && !isRetry && !endpoint.includes("/auth/refresh") && this.refreshToken) {
+          try {
+            const refreshed = await this.refreshSession();
+            if (refreshed?.access_token) {
+              return this.request<T>(endpoint, options, true);
+            }
+          } catch {
+            // Token refresh failed, continue to throw original error
+          }
+        }
+
+        if (!response.ok) {
+          let errorDetail = `HTTP Error ${response.status}`;
+          try {
+            const errorText = await response.text();
+            if (errorText) {
+              const parsed = JSON.parse(errorText);
+              errorDetail = parsed.detail || parsed.message || errorDetail;
+            }
+          } catch {
+            // ignore parsing error
+          }
+          throw new Error(errorDetail);
+        }
+
+        if (response.status === 204) {
+          return null as unknown as T;
+        }
+
+        const text = await response.text();
+        if (!text || !text.trim()) {
+          return null as unknown as T;
+        }
+
+        let result: T;
+        try {
+          result = JSON.parse(text) as T;
+        } catch {
+          result = text as unknown as T;
+        }
+
+        if (isGet) {
+          this.responseCache.set(cacheKey, { timestamp: Date.now(), data: result });
+        }
+        return result;
+      } catch (err: any) {
+        clearTimeout(timeoutId);
+        throw err;
       }
-    } catch (err: any) {
-      clearTimeout(timeoutId);
-      throw err;
+    };
+
+    if (isGet && !isRetry) {
+      const reqPromise = executeRequest().finally(() => {
+        this.inFlightRequests.delete(cacheKey);
+      });
+      this.inFlightRequests.set(cacheKey, reqPromise);
+      return reqPromise;
     }
+
+    return executeRequest();
   }
 
   // Auth

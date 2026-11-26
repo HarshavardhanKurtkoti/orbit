@@ -158,6 +158,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
   loadWorkspaceData: async (workspaceId?: string) => {
     const wsId = workspaceId || get().currentWorkspace?.id || "ws_prime";
+    if (get().isSyncing) return;
     try {
       set({ isSyncing: true });
       const [projData, taskData, noteData, analyticsData, graphData] = await Promise.all([

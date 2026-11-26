@@ -34,6 +34,8 @@ export function HomeDashboard() {
     tasks,
     notes,
     analytics,
+    isDataLoaded,
+    isSyncing,
     loadWorkspaceData,
     updateTaskOptimistic,
     setSelectedEntity,
@@ -41,10 +43,10 @@ export function HomeDashboard() {
   } = useWorkspaceStore();
 
   useEffect(() => {
-    if (currentWorkspace?.id) {
+    if (currentWorkspace?.id && !isDataLoaded && !isSyncing) {
       loadWorkspaceData(currentWorkspace.id);
     }
-  }, [currentWorkspace?.id, loadWorkspaceData]);
+  }, [currentWorkspace?.id, isDataLoaded, isSyncing, loadWorkspaceData]);
 
   const toggleTask = async (task: any, e: React.MouseEvent) => {
     e.stopPropagation();

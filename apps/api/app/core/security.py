@@ -1,3 +1,4 @@
+import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional, Union
 import bcrypt
@@ -11,6 +12,27 @@ from app.core.config import settings
 from app.core.database import get_db
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login", auto_error=False)
+
+# High-performance in-memory cache to eliminate repetitive round-trips to Neon PostgreSQL
+_USER_CACHE: dict[str, tuple[float, Any]] = {}
+_WORKSPACE_ACCESS_CACHE: dict[tuple[str, str], tuple[float, Any]] = {}
+CACHE_TTL = 45.0  # seconds
+
+
+def invalidate_user_cache(user_id: Optional[str] = None):
+    if user_id:
+        _USER_CACHE.pop(user_id, None)
+    else:
+        _USER_CACHE.clear()
+
+
+def invalidate_workspace_access_cache(workspace_id: Optional[str] = None):
+    if workspace_id:
+        to_del = [k for k in _WORKSPACE_ACCESS_CACHE if k[0] == workspace_id]
+        for k in to_del:
+            _WORKSPACE_ACCESS_CACHE.pop(k, None)
+    else:
+        _WORKSPACE_ACCESS_CACHE.clear()
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -112,9 +134,17 @@ async def get_current_user(
     except jwt.PyJWTError:
         raise credentials_exception
         
-    from app.models.user import User
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
+    now = time.time()
+    cached = _USER_CACHE.get(user_id)
+    if cached and (now - cached[0] < CACHE_TTL):
+        user = cached[1]
+    else:
+        from app.models.user import User
+        result = await db.execute(select(User).where(User.id == user_id))
+        user = result.scalar_one_or_none()
+        if user is not None:
+            _USER_CACHE[user_id] = (now, user)
+
     if user is None:
         raise credentials_exception
     if user.status == "suspended":
@@ -141,6 +171,12 @@ async def verify_workspace_access(
     user_id: str,
     db: AsyncSession
 ):
+    now = time.time()
+    cache_key = (workspace_id, user_id)
+    cached = _WORKSPACE_ACCESS_CACHE.get(cache_key)
+    if cached and (now - cached[0] < CACHE_TTL):
+        return cached[1]
+
     from app.models.workspace import Workspace, WorkspaceMember
     query = (
         select(Workspace)
@@ -154,4 +190,5 @@ async def verify_workspace_access(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access denied: You do not have access to this workspace",
         )
+    _WORKSPACE_ACCESS_CACHE[cache_key] = (now, workspace)
     return workspace
